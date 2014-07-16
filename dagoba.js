@@ -1,3 +1,8 @@
+/*
+    dagoba: an in-memory graph database
+*/
+
+
 Dagoba = {}
 
 Dagoba.Query = {}
@@ -12,7 +17,7 @@ Dagoba.make_fun = function(name) {
 
 Dagoba.query = function(graph) { 
   var query = Object.create(Dagoba.Query) 
-  query.queue = []                  // an array of 
+  query.queue = []                  // things to do
   query.graph = graph
   query.result = null
 //  query.pointer = 0
@@ -107,7 +112,7 @@ Dagoba.Query.name = function() {
   // return this.result.map(function(vertex) {return vertex.name})  // THINK: maybe this instead
 }
 
-var methods = ['out', 'in', 'attr', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE', 'filter']
+var methods = ['out', 'in', 'attr', 'take', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 methods.forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
 
 Dagoba.Funs = {
@@ -159,7 +164,15 @@ Dagoba.Funs = {
   
   collector: function(graph, args, gremlin, state) {
     return { state: (state.concat ? state : []).concat(gremlin) }
-  }
+  },
+  
+  take: function(graph, args, gremlin, state) {
+    if(state.length == args[0]) return {state: state}
+    return { state: (state.concat ? state : []).concat(gremlin) }
+    // if(gremlin.state == args[0]) return {} // all done
+    // gremlin.state = (gremlin.state || 0) + 1
+    // return { state: (state.concat ? state : []).concat(gremlin) }
+  },
 }
 
 
