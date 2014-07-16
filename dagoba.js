@@ -272,7 +272,7 @@ Dagoba.Graph.findVerticesByIds = function(ids) {
 }
 
 Dagoba.Graph.findVertices = function(ids) {
-  return !ids.length || 1+ +ids[0] ? this.findVerticesByIds(ids) : this.searchVertices(ids)
+  return !ids.length || typeof ids[0] != 'object' ? this.findVerticesByIds(ids) : this.searchVertices(ids)
 }
 
 Dagoba.Graph.searchVertices = function(obj) {
