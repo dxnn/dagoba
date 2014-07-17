@@ -180,6 +180,7 @@
     ]
 
     var cleanstring = function(key, value) {return (key == '_in' || key == '_out') ? undefined : value}
+    var cleanedges  = function(key, value) {return key == '_in' ? value._id : key == '_out' ? value._id : value}
 
     GG = [] // global for console testing
     
@@ -205,7 +206,7 @@
       var header = document.createElement('header')
       testdiv.appendChild(header)
       header.innerHTML = '<p>vertices: <code><pre>' + JSON.stringify(trial.vertices, cleanstring, 2) + '</pre></code></p>'
-                       + '<p>edges: <code><pre>'    + JSON.stringify(trial.edges, cleanstring, 2)    + '</pre></code></p>'
+                       + '<p>edges: <code><pre>'    + JSON.stringify(trial.edges,    cleanedges, 2)    + '</pre></code></p>'
       
       resultbox[1].forEach(function(list) {
         
