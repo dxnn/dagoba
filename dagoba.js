@@ -84,7 +84,8 @@ Dagoba.Query.run = function() { // special casing for run
   
   
   results = results.map(function(gremlin) {return gremlin.vertex}) // make this a query component (or posthook)
-  results = Dagoba.firehooks('postquery', this, results)[0]
+  results = Dagoba.firehooks('postquery', this, results)[0] // TODO: the uniquify hook happens after the take component
+                                                            // so it can smush results down to less than you wanted...
   
   return results
   
@@ -95,7 +96,9 @@ Dagoba.Query.run = function() { // special casing for run
     return Dagoba.Funs[step[0]](graph, step.slice(1) || {}, maybe_gremlin, my_state)
   }
   
-  
+  // OK!!! 
+  // now clean this up, deal with gremlin paths / history, and also gremlin "collisions"
+  // then use this for all the cool stuff everywhere ever
   
   
   
@@ -284,6 +287,7 @@ Dagoba.Funs = {
       state.taken = 0
       return 'done'
     }
+    if(!gremlin) return 'pull'
     state.taken++ // FIXME: mutating! ugh!
     return gremlin
     
