@@ -82,8 +82,7 @@ Dagoba.Query.run = function() { // special casing for run
     }
   }
   
-  
-  results = results.map(function(gremlin) {return gremlin.vertex}) // make this a query component (or posthook)
+  results = results.map(function(gremlin) {return gremlin.result ? gremlin.result : gremlin.vertex}) // make this a query component (or posthook)
   results = Dagoba.firehooks('postquery', this, results)[0] // TODO: the uniquify hook happens after the take component
                                                             // so it can smush results down to less than you wanted...
   
@@ -204,7 +203,7 @@ Dagoba.Query.name = function() {
 Dagoba.make_fun = function(name) {
   return function() { return this.add([name].concat(Array.prototype.slice.apply(arguments))) } }
 
-var methods = ['out', 'in', 'attr', 'take', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
+var methods = ['out', 'in', 'take', 'property', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 methods.forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
 
 Dagoba.Funs = {
@@ -277,9 +276,11 @@ Dagoba.Funs = {
     return {stay: [gremlin], go: [clone]}
   },
   
-  // attr: function(graph, args, gremlin, state) {
-  //   return graph.findVertexById(gremlin.vertex)[args[0]]
-  // },
+  property: function(graph, args, gremlin, state) {
+    if(!gremlin) return 'pull'
+    gremlin.result = gremlin.vertex[args[0]]
+    return gremlin
+  },
   
   take: function(graph, args, gremlin, state) {
     state.taken = state.taken ? state.taken : 0
