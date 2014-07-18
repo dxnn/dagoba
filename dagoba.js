@@ -257,14 +257,14 @@ Dagoba.Funs = {
     }
     
     if(!state.edgeList[state.current].length) { // finished this round
-      if(state.current >= limit) {  // totally done
+      if(state.current >= limit || !state.edgeList[state.current+1]   // totally done, or the next round has no items
+                                || !state.edgeList[state.current+1].length) {
         state.edgeList = false
         return 'pull'
       }
       state.current++ // go to next round
       state.edgeList[state.current+1] = [] 
-      if(!state.edgeList[state.current].length) return 'pull' // this new round has no items, so we quit
-    }    
+    }
     
     var vertex = state.edgeList[state.current].pop()._in
     
