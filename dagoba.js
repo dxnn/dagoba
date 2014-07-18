@@ -91,7 +91,7 @@ Dagoba.Query.run = function() { // special casing for run
   function try_step(pc, maybe_gremlin) {
     var step = program[pc]
     var my_state = (state[pc] = state[pc] || {})
-    if(!Dagoba.Funs[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || {}
+    if(!Dagoba.Funs[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || maybe_gremlin || 'pull'
     return Dagoba.Funs[step[0]](graph, step.slice(1) || {}, maybe_gremlin, my_state)
   }
   
@@ -297,8 +297,8 @@ Dagoba.Funs = {
   
   unique: function(graph, args, gremlin, state) {
     if(!gremlin) return 'pull'
-    if(state[gremlin._id]) return 'pull' // we've seen this gremlin, so get another instead
-    state[gremlin._id] = true
+    if(state[gremlin.vertex._id]) return 'pull' // we've seen this gremlin, so get another instead
+    state[gremlin.vertex._id] = true
     return gremlin
   },
   
@@ -368,13 +368,16 @@ Dagoba.firehooks = function(type, query) {
   return ((Dagoba.hooks || {})[type] || []).reduce(function(acc, callback) {return callback.apply(query, acc)}, args)
 }
 
-Dagoba.addhook('postquery', Dagoba.uniqueify = function (results) { // THINK: should we inline this and merge&count in the gremlins?
-  return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]
-})
 
-Dagoba.addhook('postquery', Dagoba.cleanclone = function (results) { // THINK: do we always want this?
-  return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]
-})
+// NOTE: removing these for current purposes. have them available for uses that require them. our vertex payloads are immutable, and we uniqueify prior to taking.
+
+// Dagoba.addhook('postquery', Dagoba.uniqueify = function (results) { // THINK: should we inline this and merge&count in the gremlins?
+//   return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]
+// })
+//
+// Dagoba.addhook('postquery', Dagoba.cleanclone = function (results) { // THINK: do we always want this?
+//   return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]
+// })
 
 
 
@@ -397,7 +400,7 @@ Dagoba.Graph.addVertex = function(vertex) {
   if(!vertex._id) 
     vertex._id = this.vertices.length+1
   this.vertices.push(vertex)
-  // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?)
+  // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need setable _id because we need to grab vertices quickly by external key]
   this.vertexIndex[vertex._id] = vertex
   vertex._out = []; vertex._in = []
 }
