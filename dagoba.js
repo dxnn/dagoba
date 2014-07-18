@@ -203,7 +203,7 @@ Dagoba.Query.name = function() {
 Dagoba.make_fun = function(name) {
   return function() { return this.add([name].concat(Array.prototype.slice.apply(arguments))) } }
 
-var methods = ['out', 'in', 'take', 'property', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
+var methods = ['out', 'in', 'take', 'property', 'outAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 methods.forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
 
 Dagoba.Funs = {
@@ -279,6 +279,13 @@ Dagoba.Funs = {
   property: function(graph, args, gremlin, state) {
     if(!gremlin) return 'pull'
     gremlin.result = gremlin.vertex[args[0]]
+    return gremlin
+  },
+  
+  unique: function(graph, args, gremlin, state) {
+    if(!gremlin) return 'pull'
+    if(state[gremlin._id]) return 'pull' // we've seen this gremlin, so get another instead
+    state[gremlin._id] = true
     return gremlin
   },
   
