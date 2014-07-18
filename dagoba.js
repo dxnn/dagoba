@@ -302,6 +302,13 @@ Dagoba.Funs = {
     return gremlin
   },
   
+  filter: function(graph, args, gremlin, state) {
+    if(!gremlin) return 'pull'
+    if(typeof args[0] != 'function') return Dagoba.onError('Filter arg is not a function: ' + args[0]) || gremlin
+    if(!args[0](gremlin.vertex)) return 'pull' // gremlin fails filter function // THINK: would we ever want to filter by other parts of the gremlin?
+    return gremlin
+  },
+  
   take: function(graph, args, gremlin, state) {
     state.taken = state.taken ? state.taken : 0
     if(state.taken == args[0]) {
