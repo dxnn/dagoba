@@ -87,6 +87,9 @@
                  
                , { fun: function(G, V, E) { return G.v(3).out().in('son').in('son').run() /* who is tom's brother's grandfather? */ } 
                  , got: function(G, V, E) { return [ V[1] ] } } // THINK: should we auto-unique??
+                 
+               , { fun: function(G, V, E) { return G.v(1).outAllN('son', 2).property('name').run()  /* all male hiers */ } 
+                 , got: function(G, V, E) { return ["Bob","Harry","Dick","Tom"] } } // THINK: should we auto-unique??
                ]
       }
       
@@ -136,6 +139,11 @@
                  , got: function(G, V, E) { return [ V[5], V[4] ] } }
                , { fun: function(G, V, E) { return G.v().out({weight: 1, '_label':'knows'}).run() /* double the fun */ }
                  , got: function(G, V, E) { return [ V[4] ] } }
+               
+               // edge out through many levels
+               
+               , { fun: function(G, V, E) { return G.v(1).outAllN('', 3).property('name').run()  /* 3 tiers of ancestor from vertex 1  */ }
+                 , got: function(G, V, E) { return ["lop","josh","vadas","ripple"] } }
                
                
                  

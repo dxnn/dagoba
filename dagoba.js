@@ -243,16 +243,40 @@ Dagoba.Funs = {
     var vertex = state.edges.pop()._in // what?
     var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
     return clone
+  },
+  
+  outAllN: function(graph, args, gremlin, state) {
+    var filter = args[0]
+    var limit = args[1]-1
     
+    if(!state.edgeList) { // initialize
+      if(!gremlin) return 'pull'
+      state.edgeList = []
+      state.current = 0
+      state.edgeList[0] = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterThings(filter))
+    }
     
-    if(!gremlin.state)
-      gremlin.state = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterThings(args[0]))
-        //function(edge) {return args[0] ? edge._label == args[0] : true})
-    if(gremlin.state.length == 0)
-      return {} // original gremlin dies here...
-    var vertex = gremlin.state.pop()._in
-    var clone = Dagoba.make_gremlin(vertex)
-    return {stay: [gremlin], go: [clone]}
+    if(!state.edgeList[state.current].length) { // finished this round
+      if(state.current >= limit) {  // totally done
+        state.edgeList = false
+        return 'pull'
+      }
+      state.current++ // go to next round
+      state.edgeList[state.current+1] = [] 
+      if(!state.edgeList[state.current].length) return 'pull' // this new round has no items, so we quit
+    }    
+    
+    var vertex = state.edgeList[state.current].pop()._in
+    
+    if(state.current < limit) { // add all our matching edges to the next level
+      if(!state.edgeList[state.current+1]) state.edgeList[state.current+1] = []
+      state.edgeList[state.current+1] = state.edgeList[state.current+1].concat(
+        graph.findOutEdges(vertex).filter(Dagoba.filterThings(filter))
+      )
+    }
+    
+    var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
+    return clone
   },
   
   'in': function(graph, args, gremlin, state) {
@@ -263,17 +287,6 @@ Dagoba.Funs = {
     var vertex = state.edges.pop()._out // what? // also, abstract this...
     var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
     return clone
-
-
-
-    if(!gremlin.state)
-      gremlin.state = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterThings(args[0]))
-        //function(edge) {return args[0] ? edge._label == args[0] : true})
-    if(gremlin.state.length == 0)
-      return {} // original gremlin dies here...
-    var vertex = gremlin.state.pop()._out
-    var clone = Dagoba.make_gremlin(vertex)
-    return {stay: [gremlin], go: [clone]}
   },
   
   property: function(graph, args, gremlin, state) {
