@@ -203,7 +203,7 @@ Dagoba.Query.name = function() {
 Dagoba.make_fun = function(name) {
   return function() { return this.add([name].concat(Array.prototype.slice.apply(arguments))) } }
 
-var methods = ['out', 'in', 'take', 'property', 'outAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
+var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 methods.forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
 
 Dagoba.Funs = {
@@ -272,6 +272,40 @@ Dagoba.Funs = {
       if(!state.edgeList[state.current+1]) state.edgeList[state.current+1] = []
       state.edgeList[state.current+1] = state.edgeList[state.current+1].concat(
         graph.findOutEdges(vertex).filter(Dagoba.filterThings(filter))
+      )
+    }
+    
+    var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
+    return clone
+  },
+  
+  inAllN: function(graph, args, gremlin, state) {
+    var filter = args[0]
+    var limit = args[1]-1
+    
+    if(!state.edgeList) { // initialize
+      if(!gremlin) return 'pull'
+      state.edgeList = []
+      state.current = 0
+      state.edgeList[0] = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterThings(filter))
+    }
+    
+    if(!state.edgeList[state.current].length) { // finished this round
+      if(state.current >= limit || !state.edgeList[state.current+1]   // totally done, or the next round has no items
+                                || !state.edgeList[state.current+1].length) {
+        state.edgeList = false
+        return 'pull'
+      }
+      state.current++ // go to next round
+      state.edgeList[state.current+1] = [] 
+    }
+    
+    var vertex = state.edgeList[state.current].pop()._out
+    
+    if(state.current < limit) { // add all our matching edges to the next level
+      if(!state.edgeList[state.current+1]) state.edgeList[state.current+1] = []
+      state.edgeList[state.current+1] = state.edgeList[state.current+1].concat(
+        graph.findInEdges(vertex).filter(Dagoba.filterThings(filter))
       )
     }
     
