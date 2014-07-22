@@ -192,6 +192,10 @@
 
     GG = [] // global for console testing
     
+    // this is weird but whatever
+    Dagoba.addhook('postquery', Dagoba.uniqueify)
+    Dagoba.addhook('postquery', Dagoba.cleanclone)
+    
     var resultlist = triallist.map(function(trial) {
       var G = Dagoba.graph() ; GG.push(G)
       trial.vertices.forEach(G.addVertex.bind(G))

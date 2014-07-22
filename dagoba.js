@@ -412,13 +412,15 @@ Dagoba.firehooks = function(type, query) {
 
 // NOTE: removing these for current purposes. have them available for uses that require them. our vertex payloads are immutable, and we uniqueify prior to taking.
 
-// Dagoba.addhook('postquery', Dagoba.uniqueify = function (results) { // THINK: should we inline this and merge&count in the gremlins?
-//   return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]
-// })
+// Dagoba.addhook('postquery', 
+  Dagoba.uniqueify = function (results) { // THINK: should we inline this and merge&count in the gremlins?
+    return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]}
+// )
 //
-// Dagoba.addhook('postquery', Dagoba.cleanclone = function (results) { // THINK: do we always want this?
-//   return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]
-// })
+// Dagoba.addhook('postquery', 
+  Dagoba.cleanclone = function (results) { // THINK: do we always want this?
+   return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]}
+// )
 
 
 
@@ -440,8 +442,9 @@ Dagoba.graph = function() {
 Dagoba.Graph.addVertex = function(vertex) {
   if(!vertex._id) 
     vertex._id = this.vertices.length+1
-  this.vertices.push(vertex)
-  // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need setable _id because we need to grab vertices quickly by external key]
+  // TODO: ensure unique _id
+  this.vertices.push(vertex) // THINK: the user may retain a pointer to vertex, which they might mutate later >.<
+  // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
   this.vertexIndex[vertex._id] = vertex
   vertex._out = []; vertex._in = []
 }
