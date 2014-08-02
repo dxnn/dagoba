@@ -488,15 +488,15 @@ Dagoba.Graph.searchVertices = function(obj) {
           return acc && obj[0][key] == vertex[key] }, true ) } ) }
 
 Dagoba.Graph.findEdgeById = function(edge_id) {
-  return this.edges.find(function(edge) {return edge._id == edge_id}) }
+  return Dagoba.find(this.edges, function(edge) {return edge._id == edge_id} ) }
 
 Dagoba.Graph.findOutEdges = function(vertex) {
   return vertex._out;
-  return this.edges.filter(function(edge) {return edge._out == vertex._id}) }
+  return this.edges.filter(function(edge) {return edge._out == vertex._id} ) }
 
 Dagoba.Graph.findInEdges = function(vertex) {
   return vertex._in;
-  return this.edges.filter(function(edge) {return edge._in == vertex._id}) }
+  return this.edges.filter(function(edge) {return edge._in == vertex._id} ) }
 
 Dagoba.filterThings = function(arg) {
   return function(thing) {
@@ -508,12 +508,16 @@ Dagoba.objFilter = function(thing, obj) {
     if(thing[key] != obj[key])
       return false; return true }
 
-Array.prototype.find = function(fun) { // like ES6
-  for (var i = 0, len = this.length; i < len; i++)
-    if(fun(this[i], i, this))
-      return this[i] }
+// Array.prototype.find = function(fun) { // like ES6 // TODO: shim this properly
+//   for (var i = 0, len = this.length; i < len; i++)
+//     if(fun(this[i], i, this))
+//       return this[i] }
+
+Dagoba.find = function(arr, fun) {
+    for (var i = 0, len = arr.length; i < len; i++)
+      if(fun(arr[i], i, arr))
+        return arr[i] }
 
 Dagoba.onError = function(msg) {
   console.log(msg)
-  return false
-}
+  return false }
