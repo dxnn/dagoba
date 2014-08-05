@@ -60,12 +60,11 @@ Dagoba.Query.run = function() {                               // special casing 
       var gremlins = this.gremlins
 
 
-
   this.done = -1  // clear the 'done' counter so we can get new results
                   // (components empty themselves, then return 'done', then we bump the counter past the component's slot)
   
   var max = program.length-1
-  var done = this.done
+  // var done = this.done
   var done = -1  // technically we don't need this.done... it's only useful if we want to pause mid-run and go async.
   var pc = max   // likewise for the program counter. is a mid-run pause a realistic use-case?
   var maybe_gremlin = false
@@ -105,8 +104,7 @@ Dagoba.Query.run = function() {                               // special casing 
   }
   
   results = results.map(function(gremlin) {return gremlin.result ? gremlin.result : gremlin.vertex}) // make this a query component (or posthook)
-  results = Dagoba.firehooks('postquery', this, results)[0] // TODO: the uniquify hook happens after the take component
-                                                            // so it can smush results down to less than you wanted...
+  results = Dagoba.firehooks('postquery', this, results)[0] 
   
   return results
   
@@ -139,6 +137,21 @@ Dagoba.Query.run = function() {                               // special casing 
   this.result = Dagoba.firehooks('postquery', this, this.result)[0]
 
   return this.result
+
+  
+  function gremlin_boxer(step_index) { return function(gremlin) { return [step_index, gremlin] } }
+  
+  function stepper(step_index, gremlin) {
+    var step = program[step_index]
+    if(!Dagoba.Funs[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || {}
+    return Dagoba.Funs[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
+  }
+  
+  function eat_gremlins(gremlins, step_index, result) {
+    return gremlins.concat( (result.stay || []).map(gremlin_boxer(step_index))   )
+                   .concat( (result.go   || []).map(gremlin_boxer(step_index+1)) ) }
+  
+  function setbang_gremlins(step_index, result) {gremlins = eat_gremlins(gremlins, step_index, result)}  
   
   /* 
       new idea: 
@@ -162,33 +175,6 @@ Dagoba.Query.run = function() {                               // special casing 
       (really query-injectors and query-transformers are the same: they're all just transformers. 
        can be run ad hoc, or added to the default queue-transformer list. [ordering? probably priority numbers... but proper dependencies / pre-pendencies (has to run before) would be better (a before/after list might be easy (but break cycles))])
   */
-  
-  function gremlin_boxer(step_index) { return function(gremlin) { return [step_index, gremlin] } }
-  
-  function stepper(step_index, gremlin) {
-    var step = program[step_index]
-    if(!Dagoba.Funs[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || {}
-    return Dagoba.Funs[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
-  }
-  
-  // function eat_result(step_index, result) {
-  //   state[step_index] = result.state
-  //   eat_gremlins(step_index, result)
-  // }
-  
-  function eat_gremlins(gremlins, step_index, result) {
-    return gremlins.concat( (result.stay || []).map(gremlin_boxer(step_index))   )
-                   .concat( (result.go   || []).map(gremlin_boxer(step_index+1)) ) }
-  
-  function setbang_gremlins(step_index, result) {gremlins = eat_gremlins(gremlins, step_index, result)}  
-}
-
-Dagoba.Query.name = function() { 
-  //// special casing for 'name' selector (migrate this once selectors are generalized)
-  this.add(['name'])
-  this.run()
-  return this.result
-  // return this.result.map(function(vertex) {return vertex.name})  // THINK: maybe this instead
 }
 
 Dagoba.Funs = {
@@ -348,6 +334,9 @@ Dagoba.make_fun = function(name) {
 Object.keys(Dagoba.Funs).forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
 // var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 
+// special case for 'name' property
+// Dagoba.Query['name'] = function() {Dagoba.Funs.property}
+
 
 Dagoba.make_gremlin = function(vertex, state) {
   return {vertex: vertex, state: state}
@@ -477,7 +466,8 @@ Dagoba.cleanclone = function (results) { // remove all _-prefixed properties
 // NOTE: add these hooks if you need them. (our vertex payloads are immutable, and we uniqueify prior to taking.)
 // Dagoba.addhook('postquery', Dagoba.uniqueify)
 // Dagoba.addhook('postquery', Dagoba.cleanclone)
-
+// THINK: the uniquify hook happens after the take component so it smushes results down, possibly returning fewer than you wanted...
+  
 
 Dagoba.onError = function(msg) {
   console.log(msg)
