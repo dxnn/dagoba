@@ -386,14 +386,6 @@ Dagoba.firehooks = function(type, query) {
 }
 
 
-// NOTE: removing these for current purposes. have them available for uses that require them. our vertex payloads are immutable, and we uniqueify prior to taking.
-Dagoba.uniqueify = function (results) { // THINK: should we inline this and merge&count in the gremlins?
-  return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]}
-// Dagoba.addhook('postquery', Dagoba.uniqueify)
-
-Dagoba.cleanclone = function (results) { // THINK: do we always want this?
- return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]}
-// Dagoba.addhook('postquery', Dagoba.cleanclone)
 
 
 
@@ -492,6 +484,20 @@ Dagoba.find = function(arr, fun) {
     for (var i = 0, len = arr.length; i < len; i++)
       if(fun(arr[i], i, arr))
         return arr[i] }
+
+Dagoba.cleanvertex = function(key, value) {return (key == '_in' || key == '_out') ? undefined : value} // for JSON.stringify
+Dagoba.cleanedge   = function(key, value) {return key == '_in' ? value._id : key == '_out' ? value._id : value}
+
+Dagoba.uniqueify = function (results) { // OPT: do this in the query via gremlin collision counting
+  return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]}
+
+Dagoba.cleanclone = function (results) { // remove all _-prefixed properties
+ return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]}
+
+// NOTE: add these hooks if you need them. (our vertex payloads are immutable, and we uniqueify prior to taking.)
+// Dagoba.addhook('postquery', Dagoba.uniqueify)
+// Dagoba.addhook('postquery', Dagoba.cleanclone)
+
 
 Dagoba.onError = function(msg) {
   console.log(msg)
