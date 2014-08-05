@@ -1,5 +1,28 @@
 /*
-    dagoba: an in-memory graph database
+     ____  _____ _____ _____ _____ _____ 
+    |    \|  _  |   __|     | __  |  _  |
+    |  |  |     |  |  |  |  | __ -|     |
+    |____/|__|__|_____|_____|_____|__|__|
+    
+    dagoba: a tiny in-memory graph database
+
+    ex: 
+    V = [{name: 'alice'}, {_id: 10, name: 'bob', hobbies: ['asdf', {x:3}] }] // alice gets auto-_id (prolly 1)
+    E = [{_in: 1, _out: 10, _label: 'knows'}]
+    g = Dagoba.graph(V, E)
+    
+    g.addVertex({name: 'charlie', _id: 'asdf'})
+    g.addEdge({_in: 10, _out: 'asdf', _label: 'knows'})
+
+    g.addVertex({name: 'delta', _id: 30})
+    g.addEdge({_in: 10, _out: 30, _label: 'parent'})
+
+    g.v(1).out('knows').out().run()  // returns [charlie, delta]
+    
+    q = g.v(1).out('knows').out().take(1)
+    q.run() // returns [charlie]
+    q.run() // returns [delta]       // (but don't rely on result order!)
+    q.run() // returns []
 */
 
 
