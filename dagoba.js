@@ -191,23 +191,13 @@ Dagoba.Query.name = function() {
   // return this.result.map(function(vertex) {return vertex.name})  // THINK: maybe this instead
 }
 
-Dagoba.make_fun = function(name) {
-  return function() { return this.add([name].concat(Array.prototype.slice.apply(arguments))) } }
-
-var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
-methods.forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
-
 Dagoba.Funs = {
   vertex: function(graph, args, gremlin, state) {
     if(!state.vertices) state.vertices = graph.findVertices(args)
     if(!state.vertices.length) return 'done'
     var vertex = state.vertices.pop() 
-    // var vertex = graph.findVertices(vert._id) // what? why? seriously. why?
     return Dagoba.make_gremlin(vertex)
     
-    
-    
-    // if(!gremlin) gremlin = Dagoba.make_gremlin()
     if(!gremlin.state)
       gremlin.state = graph.findVertices(args)
     if(gremlin.state.length == 0)
@@ -304,7 +294,7 @@ Dagoba.Funs = {
     return clone
   },
   
-  'in': function(graph, args, gremlin, state) {
+  in: function(graph, args, gremlin, state) {
     if(!gremlin && (!state.edges || !state.edges.length)) return 'pull'
     if(!state.edges || !state.edges.length) 
       state.edges = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterThings(args[0]))
@@ -352,26 +342,16 @@ Dagoba.Funs = {
   },
 }
 
+Dagoba.make_fun = function(name) {
+  return function() { return this.add([name].concat(Array.prototype.slice.apply(arguments))) } }
+
+Object.keys(Dagoba.Funs).forEach(function(name) {Dagoba.Query[name] = Dagoba.make_fun(name)})
+// var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 
 
 Dagoba.make_gremlin = function(vertex, state) {
   return {vertex: vertex, state: state}
 }
-
-
-/*
-
-ok. realistically, we can
-- add edge refs internally and run perf tests [keep old style too]
-- display graph walking for small graphs
-- display graph walking for large graphs [only show local context to current step]
-- rewrite in ES6
-- history: back, loop, path count, etc
-- smarter path count (merge gremlins)
-- orthopto
-
-*/
-
 
 
 Dagoba.hooks = {}
