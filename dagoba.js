@@ -8,14 +8,14 @@
 
     ex: 
     V = [{name: 'alice'}, {_id: 10, name: 'bob', hobbies: ['asdf', {x:3}] }] // alice gets auto-_id (prolly 1)
-    E = [{_in: 1, _out: 10, _label: 'knows'}]
+    E = [{_out: 1, _in: 10, _label: 'knows'}]
     g = Dagoba.graph(V, E)
     
-    g.addVertex({name: 'charlie', _id: 'asdf'})
-    g.addEdge({_in: 10, _out: 'asdf', _label: 'knows'})
+    g.addVertex({name: 'charlie', _id: 'charlie'})
+    g.addVertex({name: 'delta', _id: '30'})
 
-    g.addVertex({name: 'delta', _id: 30})
-    g.addEdge({_in: 10, _out: 30, _label: 'parent'})
+    g.addEdge({_out: 10, _in: 30, _label: 'parent'})
+    g.addEdge({_out: 10, _in: 'charlie', _label: 'knows'})
 
     g.v(1).out('knows').out().run()  // returns [charlie, delta]
     
@@ -454,11 +454,13 @@ Dagoba.Graph.v = function() {
   return query
 }
 
-Dagoba.graph = function() { 
-  var graph = Object.create( Dagoba.Graph ) 
+Dagoba.graph = function(V, E) { 
+  var graph = Object.create( Dagoba.Graph )
   graph.vertices = [] // can't stick these on the prototype or they'll be shared
   graph.edges = []
   graph.vertexIndex = {}
+  if(V && Array.isArray(V)) graph.addVertices(V)
+  if(E && Array.isArray(E)) graph.addEdges(E)
   return graph
 }
 
