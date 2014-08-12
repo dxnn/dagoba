@@ -356,11 +356,16 @@ Dagoba.firehooks = function(type, query) {
 
 
 // hi! 
-// - serialization
+// -- serialization
 // - move graph to the top
 // - use 'new' constructors (ick)
 // - simplify adding new methods (and using old ones, re: name)
 // - tune gremlins (collisions, history, etc)
+// - interface: show query pieces and params,
+// - interface: resumable queries
+// - generational queries
+// - intersections
+// - adverbs
 // - you are great!
 
 
@@ -435,12 +440,13 @@ Dagoba.Graph.findInEdges = function(vertex) {
   return vertex._in; }
   // return this.edges.filter(function(edge) {return edge._in == vertex._id} ) }
 
+
 Dagoba.Graph.toString = function() {
   return '{"V":'+JSON.stringify(this.vertices, Dagoba.cleanvertex)+', "E":'+JSON.stringify(this.edges, Dagoba.cleanedge)+'}' }
 
-
 Dagoba.fromString = function(str) {
   var obj = JSON.parse(str); return Dagoba.graph(obj.V, obj.E) }
+
 
 Dagoba.filterThings = function(arg) {
   return function(thing) {
