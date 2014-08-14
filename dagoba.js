@@ -205,14 +205,14 @@ Dagoba.Query.add = function(list) {                               // add a new t
 }
 
 Dagoba.addQFun = function(name, fun) {                            // add a new traversal type
+  Dagoba.QFuns[name] = fun
+  Dagoba.Query[name] = function() { return this.add([name].concat([].slice.apply(arguments))) } 
   // TODO: accept string fun and allow extra params, for building quick aliases like
   //       Dagoba.addQFun('children', 'out') <-- if all out edges are kids
   //       Dagoba.addQFun('nthGGP', 'inN', 'parent')
-  Dagoba.QFuns[name] = fun
-  Dagoba.Query[name] = function() { return this.add([name].concat([].slice.apply(arguments))) } 
+  // var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 }
 
-// var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 
 Dagoba.QFuns = {}                                                 // all traversal types
 
@@ -232,7 +232,7 @@ Dagoba.addQFun('out', function(graph, args, gremlin, state) {
   var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
-  
+
 Dagoba.addQFun('outAllN', function(graph, args, gremlin, state) {
   var filter = args[0]
   var limit = args[1]-1
@@ -271,26 +271,26 @@ Dagoba.addQFun('inAllN', function(graph, args, gremlin, state) {
   var filter = args[0]
   var limit = args[1]-1
   
-  if(!state.edgeList) { // initialize
+  if(!state.edgeList) {                                           // initialize
     if(!gremlin) return 'pull'
     state.edgeList = []
     state.current = 0
     state.edgeList[0] = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterThings(filter))
   }
   
-  if(!state.edgeList[state.current].length) { // finished this round
-    if(state.current >= limit || !state.edgeList[state.current+1]   // totally done, or the next round has no items
+  if(!state.edgeList[state.current].length) {                     // finished this round
+    if(state.current >= limit || !state.edgeList[state.current+1] // totally done, or the next round has no items
                               || !state.edgeList[state.current+1].length) {
       state.edgeList = false
       return 'pull'
     }
-    state.current++ // go to next round
+    state.current++                                               // go to next round
     state.edgeList[state.current+1] = [] 
   }
   
   var vertex = state.edgeList[state.current].pop()._out
   
-  if(state.current < limit) { // add all our matching edges to the next level
+  if(state.current < limit) {                                     // add all our matching edges to the next level
     if(!state.edgeList[state.current+1]) state.edgeList[state.current+1] = []
     state.edgeList[state.current+1] = state.edgeList[state.current+1].concat(
       graph.findInEdges(vertex).filter(Dagoba.filterThings(filter))
@@ -319,7 +319,7 @@ Dagoba.addQFun('property', function(graph, args, gremlin, state) {
   
 Dagoba.addQFun('unique', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
-  if(state[gremlin.vertex._id]) return 'pull' // we've seen this gremlin, so get another instead
+  if(state[gremlin.vertex._id]) return 'pull'                     // we've seen this gremlin, so get another instead
   state[gremlin.vertex._id] = true
   return gremlin
 })
@@ -327,7 +327,8 @@ Dagoba.addQFun('unique', function(graph, args, gremlin, state) {
 Dagoba.addQFun('filter', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
   if(typeof args[0] != 'function') return Dagoba.onError('Filter arg is not a function: ' + args[0]) || gremlin
-  if(!args[0](gremlin.vertex)) return 'pull' // gremlin fails filter function // THINK: would we ever want to filter by other parts of the gremlin?
+  if(!args[0](gremlin.vertex)) return 'pull'                      // gremlin fails filter function 
+  // THINK: would we ever want to filter by other parts of the gremlin?
   return gremlin
 })
   
@@ -340,12 +341,6 @@ Dagoba.addQFun('take', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
   state.taken++ // FIXME: mutating! ugh!
   return gremlin
-  
-  
-  return { state: (state.concat ? state : []).concat(gremlin) }
-  // if(gremlin.state == args[0]) return {} // all done
-  // gremlin.state = (gremlin.state || 0) + 1
-  // return { state: (state.concat ? state : []).concat(gremlin) }
 })
 
 
