@@ -73,18 +73,21 @@ Dagoba.G.addEdges    = function(edges)    { edges   .forEach(this.addEdge  .bind
 Dagoba.G.findVertexById = function(vertex_id) {
   return this.vertexIndex[vertex_id] }
 
-Dagoba.G.findVerticesByIds = function(ids) { // OPT: if ids is scalar, skip straight to findVertexById
-  return ids.length ? ids.map(this.findVertexById.bind(this)).filter(Boolean) : this.vertices.slice() }
+Dagoba.G.findVerticesByIds = function(ids) {
+  return ids.length == 1 ? [].concat( this.findVertexById(ids[0]) || [] )
+       : ids.map( this.findVertexById.bind(this) ).filter(Boolean) }
 
 Dagoba.G.findVertices = function(ids) {
-  return !ids.length || typeof ids[0] != 'object' ? this.findVerticesByIds(ids) : this.searchVertices(ids) }
+  return typeof ids[0] == 'object' ? this.searchVertices(ids[0])
+       : ids.length == 0 ? this.vertices.slice()                  // OPT: do we need the slice?
+       : this.findVerticesByIds(ids) }
 
 Dagoba.G.searchVertices = function(obj) {
   return this.vertices.filter(
     function(vertex) {
-      return Object.keys(obj[0]).reduce(
+      return Object.keys(obj).reduce(
         function(acc, key) {
-          return acc && obj[0][key] == vertex[key] }, true ) } ) }
+          return acc && obj[key] == vertex[key] }, true ) } ) }
 
 Dagoba.G.findEdgeById = function(edge_id) {
   return Dagoba.find(this.edges, function(edge) {return edge._id == edge_id} ) }
@@ -92,11 +95,15 @@ Dagoba.G.findEdgeById = function(edge_id) {
 Dagoba.G.findOutEdges = function(vertex) { return vertex._out; }
 Dagoba.G.findInEdges  = function(vertex) { return vertex._in;  }
 
-Dagoba.G.toString = function() {
-  return '{"V":'+JSON.stringify(this.vertices, Dagoba.cleanvertex)+', "E":'+JSON.stringify(this.edges, Dagoba.cleanedge)+'}' }
+Dagoba.G.toString = function() {                                  // kids, don't hand code JSON
+  return '{"V":' + JSON.stringify(this.vertices, Dagoba.cleanvertex)
+       + ',"E":' + JSON.stringify(this.edges,    Dagoba.cleanedge) 
+       + '}' }
 
 Dagoba.fromString = function(str) {                               // another graph constructor
-  var obj = JSON.parse(str); return Dagoba.graph(obj.V, obj.E) }
+  var obj = JSON.parse(str)
+  return Dagoba.graph(obj.V, obj.E) 
+}
 
 
 
@@ -105,33 +112,26 @@ Dagoba.Query = {}                                                 // prototype
 Dagoba.query = function(graph) {                                  // factory (only called by a graph's query initializers)
   var query = Object.create(Dagoba.Query)
   
-  query.done = -1                                                 // behindwhich things have finished
-  query.pc   = 0                                                  // program counter
-  query.program = []                                              // things to do
-  
-  query.graph  = graph
-  query.result = null                                             // final output of a query run
-  query.state  = []                                               // array of state for each step
-  query.gremlins = []                                             // array of gremlins for each step
+  query.   graph = graph                                          // the graph itself
+  query.   state = []                                             // state for each step
+  query. program = []                                             // list of steps to take  
+  query.gremlins = []                                             // gremlins for each step
   
   return query
 }
 
 Dagoba.Query.run = function() {                                   // the magic lives here
-  var graph = this.graph
-  var state = this.state
-  var program = this.program
+  
+  var graph = this.graph                                          // these are closed over in the helpers
+  var state = this.state                                          // so we give them a spot in the frame
+  var program  = this.program
   var gremlins = this.gremlins
 
-  this.done = -1  // clear the 'done' counter so we can get new results
-                  // (components empty themselves, then return 'done', then we bump the counter past the component's slot)
-  
-  var max = program.length-1
-  // var done = this.done
-  var done = -1  // technically we don't need this.done... it's only useful if we want to pause mid-run and go async.
-  var pc = max   // likewise for the program counter. is a mid-run pause a realistic use-case?
-  var maybe_gremlin = false
-  var results = []
+  var max = program.length-1                                      // work backwards
+  var pc = max                                                    // program counter
+  var done = -1                                                   // behindwhich things have finished
+  var results = []                                                // results for this run
+  var maybe_gremlin = false                                       // a mythical beast
 
   if(!program.length) return []                                   // don't bother
   
@@ -148,7 +148,6 @@ Dagoba.Query.run = function() {                                   // the magic l
       } else {
         done = pc
       }
-      // maybe_gremlin = 'done'
     }
     
     if(maybe_gremlin == 'done') {
@@ -158,19 +157,24 @@ Dagoba.Query.run = function() {                                   // the magic l
     
     pc++
     
-    if(pc > max) { // a gremlin is popping out of the pipeline. catch it and bag it!
+    if(pc > max) {                                                // a gremlin is popping out of the pipeline. catch it!
       if(maybe_gremlin)
         results.push(maybe_gremlin)
       maybe_gremlin = false
       pc--
     }
   }
+
+  // TODO: deal with gremlin paths / history and gremlin "collisions"
   
-  results = results.map(                                          // make this a query component (or posthook)
-    function(gremlin) {return gremlin.result ? gremlin.result : gremlin.vertex}) 
+  results = results.map(function(gremlin) {                       // make this a query component (or posthook)
+    return gremlin.result ? gremlin.result : gremlin.vertex } )
+
   results = Dagoba.firehooks('postquery', this, results)[0] 
   
   return results
+  
+  // NAMED HELPERS
   
   function try_step(pc, maybe_gremlin) {
     var step = program[pc]
@@ -178,31 +182,7 @@ Dagoba.Query.run = function() {                                   // the magic l
     if(!Dagoba.QFuns[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || maybe_gremlin || 'pull'
     return Dagoba.QFuns[step[0]](graph, step.slice(1) || {}, maybe_gremlin, my_state)
   }
-  
-  // TODO: deal with gremlin paths / history and gremlin "collisions"
-  
-  setbang_gremlins(0, stepper(0))                                 // eat the first gremlin
-  
-  // process the program
-  while(gremlins.length) {
-    var gremlinbox = gremlins.pop()
-    var result = stepper(gremlinbox[0], gremlinbox[1])
-    // eat_result(gremlinbox[0], result)
-    state[gremlinbox[0]] = result.state
-    setbang_gremlins(gremlinbox[0], result)
-  }
-  
-  // cultivate results
-  // this.result = this.gremlins.filter(function(gremlin) {return gremlin.state == 'alive'})
-  //                            .map(function(gremlin)    {return gremlin.path[gremlin.path.length-1]})
-  var collection = this.state[this.state.length - 1] || []
-  this.result = collection.map(function(gremlin) {return gremlin.vertex})
-
-  this.result = Dagoba.firehooks('postquery', this, this.result)[0]
-
-  return this.result
-
-  
+    
   function gremlin_boxer(step_index) { return function(gremlin) { return [step_index, gremlin] } }
   
   function stepper(step_index, gremlin) {
@@ -215,31 +195,9 @@ Dagoba.Query.run = function() {                                   // the magic l
     return gremlins.concat( (result.stay || []).map(gremlin_boxer(step_index))   )
                    .concat( (result.go   || []).map(gremlin_boxer(step_index+1)) ) }
   
-  function setbang_gremlins(step_index, result) {gremlins = eat_gremlins(gremlins, step_index, result)}  
-  
-  /* 
-      new idea: 
-      - start with last component (collector)
-      - it provides a 'pull' request as its return value
-      - driver loop goes to previous component:
-        - it might 'push' results
-        - it might make a 'pull' request
-        - it might be 'done'
-  
-      a query with a take(1) at the end provides one result at a time: you can keep calling it to get more results
-      - this requires the take component to update itself on re-query: does it only provide 'done' once? 
-        - once anything is 'done' everything above it is probably done also, so there's no backtracking?
-        - it'd be better to toggle this on re-query: downstream components might be funky.
-        - track it in the query? a list of 'done' components: don't even ask them.
-      
-      intersection/backtracking/etc... gremlin memory: it's not the vertex that arrives at the end, it's the gremlin.
-      if we want history/state/replay then add that as a query stack modifier (inject between each queue item)
-      likewise with gremlin collision (merging): query-inject it into the queue after collision-capable components
-      
-      (really query-injectors and query-transformers are the same: they're all just transformers. 
-       can be run ad hoc, or added to the default queue-transformer list. [ordering? probably priority numbers... but proper dependencies / pre-pendencies (has to run before) would be better (a before/after list might be easy (but break cycles))])
-  */
+  function setbang_gremlins(step_index, result) {gremlins = eat_gremlins(gremlins, step_index, result)}
 }
+
 
 Dagoba.Query.add = function(list) {                               // add a new traversal to the query
   this.program.push(list)
@@ -263,23 +221,6 @@ Dagoba.addQFun('vertex', function(graph, args, gremlin, state) {
   if(!state.vertices.length) return 'done'
   var vertex = state.vertices.pop() 
   return Dagoba.make_gremlin(vertex)
-  
-  if(!gremlin.state)
-    gremlin.state = graph.findVertices(args)
-  if(gremlin.state.length == 0)
-    return {} // original gremlin dies here...
-  
-  var vert = gremlin.state.pop()
-  var vertex = graph.findVertexById(vert._id)
-  var clone = Dagoba.make_gremlin(vertex)
-  return {stay: [gremlin], go: [clone]}
-
-  // if(state.status == 'done') return false    
-  // var vertices = args[0] ? graph.findVertexById(args[0]) : graph.vertices
-  // var gremlin = Dagoba.make_gremlin(vertex)
-  // return {stay: [], go: [gremlin], state: {status: 'done'}}
-  // return thread(args[0], graph.findVertexById, Dagoba.make_gremlin, ...)
-  // return { gremlins: [{ state: 'alive', path: [graph.findVertexById(args[0])] }], history: ['done'] } 
 })
   
 Dagoba.addQFun('out', function(graph, args, gremlin, state) {
@@ -446,9 +387,9 @@ Dagoba.objFilter = function(thing, obj) {
       return false; return true }
 
 Dagoba.find = function(arr, fun) {
-    for (var i = 0, len = arr.length; i < len; i++)
-      if(fun(arr[i], i, arr))
-        return arr[i] }
+  for (var i = 0, len = arr.length; i < len; i++)
+    if(fun(arr[i], i, arr))
+      return arr[i] }
 
 Dagoba.cleanvertex = function(key, value) {return (key == '_in' || key == '_out') ? undefined : value} // for JSON.stringify
 Dagoba.cleanedge   = function(key, value) {return key == '_in' ? value._id : key == '_out' ? value._id : value}
@@ -466,7 +407,6 @@ Dagoba.cleanclone = function (results) { // remove all _-prefixed properties
 
 // THINK: the uniquify hook happens after the take component so it smushes results down, possibly returning fewer than you wanted...
   
-
 Dagoba.onError = function(msg) {
   console.log(msg)
   return false 
