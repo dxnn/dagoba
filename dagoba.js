@@ -29,25 +29,25 @@
 
 Dagoba = {}
 
-Dagoba.Graph = {}                                                 // the prototype
+Dagoba.G = {}                                                     // the prototype
 
 Dagoba.graph = function(V, E) {                                   // the factory
-  var graph = Object.create( Dagoba.Graph )
+  var graph = Object.create( Dagoba.G )
   graph.vertices = []                                             // fresh copies so they're not shared
   graph.edges = []
   graph.vertexIndex = {}
-  if(V && Array.isArray(V)) graph.addVertices(V)
+  if(V && Array.isArray(V)) graph.addVertices(V)                  // arrays only: singular V and E don't fly
   if(E && Array.isArray(E)) graph.addEdges(E)
   return graph
 }
 
-Dagoba.Graph.v = function() {                                     // a query initializer: g.v() -> query
+Dagoba.G.v = function() {                                         // a query initializer: g.v() -> query
   var query = Dagoba.query(this)
   query.add(['vertex'].concat( [].slice.call(arguments) ))
   return query
 }
 
-Dagoba.Graph.addVertex = function(vertex) {
+Dagoba.G.addVertex = function(vertex) {
   if(!vertex._id) 
     vertex._id = this.vertices.length+1
   // TODO: ensure unique _id
@@ -57,7 +57,7 @@ Dagoba.Graph.addVertex = function(vertex) {
   vertex._out = []; vertex._in = []
 }
 
-Dagoba.Graph.addEdge = function(edge) {
+Dagoba.G.addEdge = function(edge) {
   if(!edge._label) return false
   edge._in  = this.findVertexById(edge._in)
   edge._out = this.findVertexById(edge._out)
@@ -67,32 +67,32 @@ Dagoba.Graph.addEdge = function(edge) {
   this.edges.push(edge)
 }
 
-Dagoba.Graph.addVertices = function(vertices) { vertices.forEach(this.addVertex.bind(this)) }
-Dagoba.Graph.addEdges    = function(edges)    { edges   .forEach(this.addEdge  .bind(this)) }
+Dagoba.G.addVertices = function(vertices) { vertices.forEach(this.addVertex.bind(this)) }
+Dagoba.G.addEdges    = function(edges)    { edges   .forEach(this.addEdge  .bind(this)) }
 
-Dagoba.Graph.findVertexById = function(vertex_id) {
+Dagoba.G.findVertexById = function(vertex_id) {
   return this.vertexIndex[vertex_id] }
 
-Dagoba.Graph.findVerticesByIds = function(ids) {
+Dagoba.G.findVerticesByIds = function(ids) { // OPT: if ids is scalar, skip straight to findVertexById
   return ids.length ? ids.map(this.findVertexById.bind(this)).filter(Boolean) : this.vertices.slice() }
 
-Dagoba.Graph.findVertices = function(ids) {
+Dagoba.G.findVertices = function(ids) {
   return !ids.length || typeof ids[0] != 'object' ? this.findVerticesByIds(ids) : this.searchVertices(ids) }
 
-Dagoba.Graph.searchVertices = function(obj) {
+Dagoba.G.searchVertices = function(obj) {
   return this.vertices.filter(
     function(vertex) {
       return Object.keys(obj[0]).reduce(
         function(acc, key) {
           return acc && obj[0][key] == vertex[key] }, true ) } ) }
 
-Dagoba.Graph.findEdgeById = function(edge_id) {
+Dagoba.G.findEdgeById = function(edge_id) {
   return Dagoba.find(this.edges, function(edge) {return edge._id == edge_id} ) }
 
-Dagoba.Graph.findOutEdges = function(vertex) { return vertex._out; }
-Dagoba.Graph.findInEdges  = function(vertex) { return vertex._in;  }
+Dagoba.G.findOutEdges = function(vertex) { return vertex._out; }
+Dagoba.G.findInEdges  = function(vertex) { return vertex._in;  }
 
-Dagoba.Graph.toString = function() {
+Dagoba.G.toString = function() {
   return '{"V":'+JSON.stringify(this.vertices, Dagoba.cleanvertex)+', "E":'+JSON.stringify(this.edges, Dagoba.cleanedge)+'}' }
 
 Dagoba.fromString = function(str) {                               // another graph constructor
@@ -247,6 +247,9 @@ Dagoba.Query.add = function(list) {                               // add a new t
 }
 
 Dagoba.addQFun = function(name, fun) {                            // add a new traversal type
+  // TODO: accept string fun and allow extra params, for building quick aliases like
+  //       Dagoba.addQFun('children', 'out') <-- if all out edges are kids
+  //       Dagoba.addQFun('nthGGP', 'inN', 'parent')
   Dagoba.QFuns[name] = fun
   Dagoba.Query[name] = function() { return this.add([name].concat([].slice.apply(arguments))) } 
 }
