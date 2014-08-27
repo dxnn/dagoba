@@ -175,7 +175,7 @@ Dagoba.Q.run = function() {                                       // the magic l
   results = results.map(function(gremlin) {                       // TODO: make this a pipe type (or posthook)
     return gremlin.result ? gremlin.result : gremlin.vertex } )
 
-  results = Dagoba.firehooks('postquery', this, results)[0] 
+  results = Dagoba.fireHooks('postquery', this, results)[0] 
   
   return results
   
@@ -224,7 +224,7 @@ Dagoba.addPipeType('vertex', function(graph, args, gremlin, state) {
   if(!state.vertices) state.vertices = graph.findVertices(args)
   if(!state.vertices.length) return 'done'
   var vertex = state.vertices.pop() 
-  return Dagoba.make_gremlin(vertex)
+  return Dagoba.makeGremlin(vertex)
 })
   
 Dagoba.addPipeType('out', function(graph, args, gremlin, state) {
@@ -233,7 +233,7 @@ Dagoba.addPipeType('out', function(graph, args, gremlin, state) {
     state.edges = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterEdges(args[0]))
   if(!state.edges.length) return 'pull'
   var vertex = state.edges.pop()._in // what?
-  var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
+  var clone = Dagoba.makeGremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
 
@@ -269,7 +269,7 @@ Dagoba.addPipeType('outAllN', function(graph, args, gremlin, state) {
     )
   }
   
-  var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
+  var clone = Dagoba.makeGremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
   
@@ -303,7 +303,7 @@ Dagoba.addPipeType('inAllN', function(graph, args, gremlin, state) {
     )
   }
   
-  var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
+  var clone = Dagoba.makeGremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
   
@@ -313,7 +313,7 @@ Dagoba.addPipeType('in', function(graph, args, gremlin, state) {
     state.edges = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterEdges(args[0]))
   if(!state.edges.length) return 'pull'
   var vertex = state.edges.pop()._out // what? // also, abstract this...
-  var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
+  var clone = Dagoba.makeGremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
   
@@ -352,21 +352,21 @@ Dagoba.addPipeType('take', function(graph, args, gremlin, state) {
 
 // HELPER FUNCTIONS
 
-Dagoba.hooks = {}
+Dagoba.hooks = {}                                                 // callbacks triggered on various occasions
 
-Dagoba.addhook = function(type, callback) {
+Dagoba.addHook = function(type, callback) {                       // add a new callback
   if(!Dagoba.hooks[type]) Dagoba.hooks[type] = []
   Dagoba.hooks[type].push(callback)
 }
 
-Dagoba.firehooks = function(type, query) {
+Dagoba.fireHooks = function(type, query) {                        // trigger callbacks of type 'type'
   var args = [].slice.call(arguments, 2)
   return ((Dagoba.hooks || {})[type] || []).reduce(
       function(acc, callback) {
           return callback.apply(query, acc)}, args)
 }
 
-Dagoba.make_gremlin = function(vertex, state) {                   // gremlins are simple creatures: 
+Dagoba.makeGremlin = function(vertex, state) {                    // gremlins are simple creatures: 
     return {vertex: vertex, state: state} }                       // a current vertex, and some state
 
 Dagoba.filterEdges = function(arg) {
@@ -374,9 +374,9 @@ Dagoba.filterEdges = function(arg) {
     return !arg ? true                                            // nothing is true
          : arg+'' === arg ? thing._label == arg                   // check the label
          : Array.isArray(arg) ? !!~arg.indexOf(thing._label)      // or a list of labels
-         : Dagoba.objFilter(thing, arg) } }                       // try it as an object
+         : Dagoba.objectFilter(thing, arg) } }                    // try it as an object
 
-Dagoba.objFilter = function(thing, obj) {
+Dagoba.objectFilter = function(thing, obj) {
   for(var key in obj)
     if(thing[key] != obj[key])
       return false; return true }
@@ -420,6 +420,6 @@ Dagoba.onError = function(msg) {
 
 // re: hooks
 // NOTE: add these hooks if you need them. (our vertex payloads are immutable, and we uniqueify prior to taking.)
-// Dagoba.addhook('postquery', Dagoba.uniqueify)
-// Dagoba.addhook('postquery', Dagoba.cleanclone)
+// Dagoba.addHook('postquery', Dagoba.uniqueify)
+// Dagoba.addHook('postquery', Dagoba.cleanclone)
 // THINK: the uniquify hook happens after the take component so it smushes results down, possibly returning fewer than you wanted...
