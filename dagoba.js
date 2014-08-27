@@ -141,13 +141,12 @@ Dagoba.Q.run = function() {                                       // the magic l
 
   if(!program.length) return []                                   // don't bother
   
-  
   // driver loop
   while(done < max) {
     maybe_gremlin = try_step(pc, maybe_gremlin)                   // maybe_gremlin is a gremlin or (string | false)
     
-    if(maybe_gremlin == 'pull') {
-      maybe_gremlin = false
+    if(maybe_gremlin == 'pull') {                                 // 'pull' is an out-of-band signal,
+      maybe_gremlin = false                                       // telling us the pipe wants further input
       if(pc-1 > done) {
         pc--
         continue
@@ -156,16 +155,16 @@ Dagoba.Q.run = function() {                                       // the magic l
       }
     }
     
-    if(maybe_gremlin == 'done') {
-      done = pc
+    if(maybe_gremlin == 'done') {                                 // 'done' is on out-of-band signal,
+      done = pc                                                   // telling us the pipe is finished
       maybe_gremlin = false
     }
     
     pc++
     
-    if(pc > max) {                                                // a gremlin is popping out of the pipeline. catch it!
+    if(pc > max) {
       if(maybe_gremlin)
-        results.push(maybe_gremlin)
+        results.push(maybe_gremlin)                               // a valid gremlin popped out the end of the pipeline
       maybe_gremlin = false
       pc--
     }
@@ -173,28 +172,30 @@ Dagoba.Q.run = function() {                                       // the magic l
 
   // TODO: deal with gremlin paths / history and gremlin "collisions"
   
-  results = results.map(function(gremlin) {                       // make this a query component (or posthook)
+  results = results.map(function(gremlin) {                       // TODO: make this a pipe type (or posthook)
     return gremlin.result ? gremlin.result : gremlin.vertex } )
 
   results = Dagoba.firehooks('postquery', this, results)[0] 
   
   return results
   
-  // NAMED HELPERS
+  // NOTE: these helpers are inside our closure
   
   function try_step(pc, maybe_gremlin) {
     var step = program[pc]
     var my_state = (state[pc] = state[pc] || {})
-    if(!Dagoba.QFuns[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || maybe_gremlin || 'pull'
-    return Dagoba.QFuns[step[0]](graph, step.slice(1) || {}, maybe_gremlin, my_state)
+    if(!Dagoba.PipeTypes[step[0]]) 
+        return Dagoba.onError('Unrecognized pipe type: ' + step[0]) || maybe_gremlin || 'pull'
+    return Dagoba.PipeTypes[step[0]](graph, step.slice(1) || {}, maybe_gremlin, my_state)
   }
     
   function gremlin_boxer(step_index) { return function(gremlin) { return [step_index, gremlin] } }
   
   function stepper(step_index, gremlin) {
     var step = program[step_index]
-    if(!Dagoba.QFuns[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || {}
-    return Dagoba.QFuns[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
+    if(!Dagoba.PipeTypes[step[0]]) 
+        return Dagoba.onError('Unrecognized pipe type: ' + step[0]) || {}
+    return Dagoba.PipeTypes[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
   }
   
   function eat_gremlins(gremlins, step_index, result) {
@@ -210,29 +211,26 @@ Dagoba.Q.add = function(list) {                                   // add a new p
   return this
 }
 
-Dagoba.addQFun = function(name, fun) {                            // add a new traversal type
-  Dagoba.QFuns[name] = fun
+Dagoba.PipeTypes = {}                                             // every pipe has a type
+
+Dagoba.addPipeType = function(name, fun) {
+  Dagoba.PipeTypes[name] = fun
   Dagoba.Q[name] = function() { return this.add([name].concat([].slice.apply(arguments))) } 
-  // TODO: accept string fun and allow extra params, for building quick aliases like
-  //       Dagoba.addQFun('children', 'out') <-- if all out edges are kids
-  //       Dagoba.addQFun('nthGGP', 'inN', 'parent')
-  // var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
 }
 
+// All the built-in pipe types are defined below
 
-Dagoba.QFuns = {}                                                 // all traversal types
-
-Dagoba.addQFun('vertex', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('vertex', function(graph, args, gremlin, state) {
   if(!state.vertices) state.vertices = graph.findVertices(args)
   if(!state.vertices.length) return 'done'
   var vertex = state.vertices.pop() 
   return Dagoba.make_gremlin(vertex)
 })
   
-Dagoba.addQFun('out', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('out', function(graph, args, gremlin, state) {
   if(!gremlin && (!state.edges || !state.edges.length)) return 'pull'
   if(!state.edges || !state.edges.length) 
-    state.edges = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterThings(args[0]))
+    state.edges = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterEdges(args[0]))
   if(!state.edges.length) return 'pull'
   var vertex = state.edges.pop()._in // what?
   var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
@@ -241,7 +239,7 @@ Dagoba.addQFun('out', function(graph, args, gremlin, state) {
 
 // TODO: show how to refactor 'out', 'outN', and 'outAllN' using adverbs. also the 'in' equivalents. also make adverbs.
 
-Dagoba.addQFun('outAllN', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('outAllN', function(graph, args, gremlin, state) {
   var filter = args[0]
   var limit = args[1]-1
   
@@ -249,7 +247,7 @@ Dagoba.addQFun('outAllN', function(graph, args, gremlin, state) {
     if(!gremlin) return 'pull'
     state.edgeList = []
     state.current = 0
-    state.edgeList[0] = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterThings(filter))
+    state.edgeList[0] = graph.findOutEdges(gremlin.vertex).filter(Dagoba.filterEdges(filter))
   }
   
   if(!state.edgeList[state.current].length) { // finished this round
@@ -267,7 +265,7 @@ Dagoba.addQFun('outAllN', function(graph, args, gremlin, state) {
   if(state.current < limit) { // add all our matching edges to the next level
     if(!state.edgeList[state.current+1]) state.edgeList[state.current+1] = []
     state.edgeList[state.current+1] = state.edgeList[state.current+1].concat(
-      graph.findOutEdges(vertex).filter(Dagoba.filterThings(filter))
+      graph.findOutEdges(vertex).filter(Dagoba.filterEdges(filter))
     )
   }
   
@@ -275,7 +273,7 @@ Dagoba.addQFun('outAllN', function(graph, args, gremlin, state) {
   return clone
 })
   
-Dagoba.addQFun('inAllN', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('inAllN', function(graph, args, gremlin, state) {
   var filter = args[0]
   var limit = args[1]-1
   
@@ -283,7 +281,7 @@ Dagoba.addQFun('inAllN', function(graph, args, gremlin, state) {
     if(!gremlin) return 'pull'
     state.edgeList = []
     state.current = 0
-    state.edgeList[0] = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterThings(filter))
+    state.edgeList[0] = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterEdges(filter))
   }
   
   if(!state.edgeList[state.current].length) {                     // finished this round
@@ -301,7 +299,7 @@ Dagoba.addQFun('inAllN', function(graph, args, gremlin, state) {
   if(state.current < limit) {                                     // add all our matching edges to the next level
     if(!state.edgeList[state.current+1]) state.edgeList[state.current+1] = []
     state.edgeList[state.current+1] = state.edgeList[state.current+1].concat(
-      graph.findInEdges(vertex).filter(Dagoba.filterThings(filter))
+      graph.findInEdges(vertex).filter(Dagoba.filterEdges(filter))
     )
   }
   
@@ -309,30 +307,30 @@ Dagoba.addQFun('inAllN', function(graph, args, gremlin, state) {
   return clone
 })
   
-Dagoba.addQFun('in', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('in', function(graph, args, gremlin, state) {
   if(!gremlin && (!state.edges || !state.edges.length)) return 'pull'
   if(!state.edges || !state.edges.length) 
-    state.edges = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterThings(args[0]))
+    state.edges = graph.findInEdges(gremlin.vertex).filter(Dagoba.filterEdges(args[0]))
   if(!state.edges.length) return 'pull'
   var vertex = state.edges.pop()._out // what? // also, abstract this...
   var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
   
-Dagoba.addQFun('property', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('property', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
   gremlin.result = gremlin.vertex[args[0]]
   return gremlin
 })
   
-Dagoba.addQFun('unique', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('unique', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
   if(state[gremlin.vertex._id]) return 'pull'                     // we've seen this gremlin, so get another instead
   state[gremlin.vertex._id] = true
   return gremlin
 })
   
-Dagoba.addQFun('filter', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('filter', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
   if(typeof args[0] != 'function') return Dagoba.onError('Filter arg is not a function: ' + args[0]) || gremlin
   if(!args[0](gremlin.vertex)) return 'pull'                      // gremlin fails filter function 
@@ -340,7 +338,7 @@ Dagoba.addQFun('filter', function(graph, args, gremlin, state) {
   // THINK: would we ever want to filter by other parts of the gremlin?
 })
   
-Dagoba.addQFun('take', function(graph, args, gremlin, state) {
+Dagoba.addPipeType('take', function(graph, args, gremlin, state) {
   state.taken = state.taken ? state.taken : 0
   if(state.taken == args[0]) {
     state.taken = 0
@@ -352,18 +350,7 @@ Dagoba.addQFun('take', function(graph, args, gremlin, state) {
 })
 
 
-
-// more todos
-// - tune gremlins (collisions, history, etc)
-// - interface: show query pieces and params,
-// - interface: resumable queries
-// - generational queries
-// - intersections
-// - adverbs
-
-// THINK: the user may retain a pointer to vertex, which they might mutate later >.<
-// can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
-
+// HELPER FUNCTIONS
 
 Dagoba.hooks = {}
 
@@ -374,16 +361,20 @@ Dagoba.addhook = function(type, callback) {
 
 Dagoba.firehooks = function(type, query) {
   var args = [].slice.call(arguments, 2)
-  return ((Dagoba.hooks || {})[type] || []).reduce(function(acc, callback) {return callback.apply(query, acc)}, args)
+  return ((Dagoba.hooks || {})[type] || []).reduce(
+      function(acc, callback) {
+          return callback.apply(query, acc)}, args)
 }
 
-Dagoba.make_gremlin = function(vertex, state) { return {vertex: vertex, state: state} }
+Dagoba.make_gremlin = function(vertex, state) {                   // gremlins are simple creatures: 
+    return {vertex: vertex, state: state} }                       // a current vertex, and some state
 
-Dagoba.filterThings = function(arg) {
+Dagoba.filterEdges = function(arg) {
   return function(thing) {
-    return !arg ? true                                                                           // nothing is true
-         : arg+'' === arg ? thing._label == arg                                                  // check the label
-         : Array.isArray(arg) ? !!~arg.indexOf(thing._label) : Dagoba.objFilter(thing, arg) } }  // or a list of labels
+    return !arg ? true                                            // nothing is true
+         : arg+'' === arg ? thing._label == arg                   // check the label
+         : Array.isArray(arg) ? !!~arg.indexOf(thing._label)      // or a list of labels
+         : Dagoba.objFilter(thing, arg) } }                       // try it as an object
 
 Dagoba.objFilter = function(thing, obj) {
   for(var key in obj)
@@ -398,20 +389,37 @@ Dagoba.find = function(arr, fun) {
 Dagoba.cleanvertex = function(key, value) {return (key == '_in' || key == '_out') ? undefined : value} // for JSON.stringify
 Dagoba.cleanedge   = function(key, value) {return key == '_in' ? value._id : key == '_out' ? value._id : value}
 
-Dagoba.uniqueify = function (results) { // OPT: do this in the query via gremlin collision counting
+Dagoba.uniqueify = function (results) {                           // OPT: do this in the query via gremlin collision counting
   return [results.filter(function(item, index, array) {return array.indexOf(item) == index})]}
 
-Dagoba.cleanclone = function (results) { // remove all _-prefixed properties
+Dagoba.cleanclone = function (results) {                          // remove all _-prefixed properties
  return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]}
-
-// NOTE: add these hooks if you need them. (our vertex payloads are immutable, and we uniqueify prior to taking.)
-
-// Dagoba.addhook('postquery', Dagoba.uniqueify)
-// Dagoba.addhook('postquery', Dagoba.cleanclone)
-
-// THINK: the uniquify hook happens after the take component so it smushes results down, possibly returning fewer than you wanted...
   
 Dagoba.onError = function(msg) {
   console.log(msg)
   return false 
 }
+
+
+// more todos
+// - tune gremlins (collisions, history, etc)
+// - interface: show query pieces and params,
+// - interface: resumable queries
+// - generational queries
+// - intersections
+// - adverbs
+
+// THINK: the user may retain a pointer to vertex, which they might mutate later >.<
+// can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
+
+// re: Dagoba.Q.addPipeType
+// TODO: accept string fun and allow extra params, for building quick aliases like
+//       Dagoba.addPipeType('children', 'out') <-- if all out edges are kids
+//       Dagoba.addPipeType('nthGGP', 'inN', 'parent')
+// var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
+
+// re: hooks
+// NOTE: add these hooks if you need them. (our vertex payloads are immutable, and we uniqueify prior to taking.)
+// Dagoba.addhook('postquery', Dagoba.uniqueify)
+// Dagoba.addhook('postquery', Dagoba.cleanclone)
+// THINK: the uniquify hook happens after the take component so it smushes results down, possibly returning fewer than you wanted...
