@@ -94,7 +94,7 @@ Dagoba.G.searchVertices = function(obj) {                         // find vertic
         function(acc, key) {
           return acc && obj[key] == vertex[key] }, true ) } ) }
 
-Dagoba.G.findEdgeById = function(edge_id) {                       // currently unused
+Dagoba.G.findEdgeById = function(edge_id) {
   return Dagoba.find(this.edges, function(edge) {
       return edge._id == edge_id} ) }
 
@@ -411,6 +411,8 @@ Dagoba.onError = function(msg) {
 
 // THINK: the user may retain a pointer to vertex, which they might mutate later >.<
 // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
+// OPT: we could also/instead take away edge _id setting, and then get rid of Dagoba.find and make findEdgeById like findVertexById (ish)
+
 
 // re: Dagoba.Q.addPipeType
 // TODO: accept string fun and allow extra params, for building quick aliases like
