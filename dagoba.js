@@ -13,7 +13,7 @@
     g = Dagoba.graph(V, E)
     
     g.addVertex({name: 'charlie', _id: 'charlie'})                // string ids are fine
-    g.addVertex({name: 'delta', _id: '30'})                       // actually they're all strings
+    g.addVertex({name: 'delta', _id: '30'})                       // in fact they're all strings
 
     g.addEdge({_out: 10, _in: 30, _label: 'parent'})
     g.addEdge({_out: 10, _in: 'charlie', _label: 'knows'})
@@ -24,6 +24,12 @@
     q.run()                                                       // returns [charlie]
     q.run()                                                       // returns [delta]    (but don't rely on result order!)
     q.run()                                                       // returns []
+
+    Dagoba consists of two parts: graphs and queries.
+    A graph contains vertices and edges, and provides access to query initializers like g.v()
+    A query contains pipes, which make up a pipeline.
+    There are also a few helper functions.
+    That's all.
 */
 
 
@@ -34,7 +40,7 @@ Dagoba.G = {}                                                     // the prototy
 Dagoba.graph = function(V, E) {                                   // the factory
   var graph = Object.create( Dagoba.G )
   graph.vertices = []                                             // fresh copies so they're not shared
-  graph.edges = []
+  graph.edges    = []
   graph.vertexIndex = {}
   if(V && Array.isArray(V)) graph.addVertices(V)                  // arrays only, because you wouldn't
   if(E && Array.isArray(E)) graph.addEdges(E)                     // call this with singular V and E
@@ -43,27 +49,26 @@ Dagoba.graph = function(V, E) {                                   // the factory
 
 Dagoba.G.v = function() {                                         // a query initializer: g.v() -> query
   var query = Dagoba.query(this)
-  query.add(['vertex'].concat( [].slice.call(arguments) ))
+  query.add(['vertex'].concat( [].slice.call(arguments) ))        // add vertex as first query pipe
   return query
 }
 
 Dagoba.G.addVertex = function(vertex) {
-  if(!vertex._id) 
+  if(!vertex._id)                                                 // TODO: ensure unique _id
     vertex._id = this.vertices.length+1
-  // TODO: ensure unique _id
-  this.vertices.push(vertex) // THINK: the user may retain a pointer to vertex, which they might mutate later >.<
-  // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
+  
+  this.vertices.push(vertex)
   this.vertexIndex[vertex._id] = vertex
-  vertex._out = []; vertex._in = []
+  vertex._out = []; vertex._in = []                               // placeholders for edge pointers
 }
 
 Dagoba.G.addEdge = function(edge) {
-  if(!edge._label) return false
+  if(!edge._label) return false                                   // all edges must be labeled // THINK: why?
   edge._in  = this.findVertexById(edge._in)
   edge._out = this.findVertexById(edge._out)
   if(!(edge._in && edge._out)) return false
-  edge._out._out.push(edge)
-  edge._in._in.push(edge)
+  edge._out._out.push(edge)                                       // add edge to the edge's out vertex's out edges
+  edge._in._in.push(edge)                                         // vice versa
   this.edges.push(edge)
 }
 
@@ -82,15 +87,16 @@ Dagoba.G.findVertices = function(ids) {
        : ids.length == 0 ? this.vertices.slice()                  // OPT: do we need the slice?
        : this.findVerticesByIds(ids) }
 
-Dagoba.G.searchVertices = function(obj) {
+Dagoba.G.searchVertices = function(obj) {                         // find vertices that match obj's key-value pairs
   return this.vertices.filter(
     function(vertex) {
       return Object.keys(obj).reduce(
         function(acc, key) {
           return acc && obj[key] == vertex[key] }, true ) } ) }
 
-Dagoba.G.findEdgeById = function(edge_id) {
-  return Dagoba.find(this.edges, function(edge) {return edge._id == edge_id} ) }
+Dagoba.G.findEdgeById = function(edge_id) {                       // currently unused
+  return Dagoba.find(this.edges, function(edge) {
+      return edge._id == edge_id} ) }
 
 Dagoba.G.findOutEdges = function(vertex) { return vertex._out; }
 Dagoba.G.findInEdges  = function(vertex) { return vertex._in;  }
@@ -116,7 +122,7 @@ Dagoba.query = function(graph) {                                  // factory (on
   query.   state = []                                             // state for each step
   query. program = []                                             // list of steps to take  
   query.gremlins = []                                             // gremlins for each step
-  
+
   return query
 }
 
@@ -199,7 +205,7 @@ Dagoba.Q.run = function() {                                       // the magic l
 }
 
 
-Dagoba.Q.add = function(list) {                                  // add a new traversal to the query
+Dagoba.Q.add = function(list) {                                   // add a new pipe to the query
   this.program.push(list)
   return this
 }
@@ -232,6 +238,8 @@ Dagoba.addQFun('out', function(graph, args, gremlin, state) {
   var clone = Dagoba.make_gremlin(vertex) // we lose history here: use clone_gremlin(gremlin).goto(vertex) instead
   return clone
 })
+
+// TODO: show how to refactor 'out', 'outN', and 'outAllN' using adverbs. also the 'in' equivalents. also make adverbs.
 
 Dagoba.addQFun('outAllN', function(graph, args, gremlin, state) {
   var filter = args[0]
@@ -328,8 +336,8 @@ Dagoba.addQFun('filter', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
   if(typeof args[0] != 'function') return Dagoba.onError('Filter arg is not a function: ' + args[0]) || gremlin
   if(!args[0](gremlin.vertex)) return 'pull'                      // gremlin fails filter function 
-  // THINK: would we ever want to filter by other parts of the gremlin?
   return gremlin
+  // THINK: would we ever want to filter by other parts of the gremlin?
 })
   
 Dagoba.addQFun('take', function(graph, args, gremlin, state) {
@@ -345,15 +353,16 @@ Dagoba.addQFun('take', function(graph, args, gremlin, state) {
 
 
 
-// hi! 
+// more todos
 // - tune gremlins (collisions, history, etc)
 // - interface: show query pieces and params,
 // - interface: resumable queries
 // - generational queries
 // - intersections
 // - adverbs
-// - you are great!
 
+// THINK: the user may retain a pointer to vertex, which they might mutate later >.<
+// can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
 
 
 Dagoba.hooks = {}
