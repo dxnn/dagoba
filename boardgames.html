@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<head>
+  <title>Dagoba</title>
+  <script type="text/javascript" src="dagoba.js"></script> 
+  <style type="text/css">
+  </style> 
+</head>
+<body>
+  
+  <p>
+    There's like a graph database of board games? And you like query it and stuff? The result count show up here; the full results are in the js console. 
+  </p>
+  
+  <div id="graph">Generating graph...</div>
+  
+  <form id="queryform">
+    <label for="query">Query:</label>
+    <input type="text" name="query" id="query" value="G.v(1).out().run()" size="80">
+    <input type="submit" value="go">
+  </form>
+  
+  <p>Find all games that seat 6 and can be played in 20 minutes</p>
+  <p>Find all worker-placement games that are best with 4 players and have a rating better than 7</p>
+  <p>Find all repeat collaborators (artists/designers that share more than one game in common)</p>
+  <p>Plot career ratings for various designers (Matt Leacock, Antoine Bauza, Reiner Knizia if you need some exaples)</p>
+  <p>Find any boardgame Kevin Bacons (if there are lots, lower the degree count to 5/4/3)</p>
+  <p>Find all collaborators that do better apart than together (those whose collaborative games are ranked significantly lower than their solo efforts)</p>
+  <p>Find any superstar artists (artists whose games are rated significantly higher than other games by the same designers)</p>
+  <p>Find any discerning publishers (publishers whose games are rated significantly higher than other games by the same designers/artists)</p>
+  <p>See if a rating is influenced more by publisher, designer or artist  (plot career/publishing-history for each and see which is more consistent over time)</p>
+  
+  <div><pre id="results"></pre></div>
+  
+  <script>
+
+    ~(function() {
+      var elements = {}
+      el = function(id) { // memoized element finder
+        if(!id) return elements
+        if(elements[id]) return elements[id]
+        var tryEl = document.getElementById(id)
+        if(!tryEl) return false
+        elements[id] = tryEl
+        return tryEl
+      }
+    })()
+
+    el('queryform').addEventListener('submit', function(e) {
+      e.preventDefault()
+      var query = el('query').value
+      var result = eval(query) // oh dear
+      console.log(result)
+      // el('results').innerHTML = JSON.stringify(result, Dagoba.cleanvertex, 2)
+      el('results').innerHTML = "There were " + result.length + " results."
+    })
+
+    var updateGraph = function() {
+      var str = "<h3>Vertices</h3>\n"
+              + G.vertices.length
+              // + G.vertices.map(function(vertex) {return "<p>"
+              //                                           + JSON.stringify(vertex, Dagoba.cleanvertex)
+              //                                           + "</p>\n"}).join('')
+              + "<h3>Edges</h3>\n"
+              + G.edges.length
+              // + G.edges   .map(function(edge)   {return "<p>"
+              //                                           + JSON.stringify(edge, Dagoba.cleanedge)
+              //                                           + "</p>\n"}).join('')
+
+      el('graph').innerHTML = str
+    }
+    
+    // updateGraph()
+
+
+    /*
+
+      Daggr
+      - add template
+      - set heuristic function for determining template based on data
+      - set layout function
+      - set/add/remove data [immutable always for first pass]
+      - render
+      - add effect functions?
+      - add layout/heuristic so they can be referenced by name
+
+    */
+    
+    /*
+
+    ok. realistically, we can
+    - add edge refs internally and run perf tests [keep old style too]
+    - display graph walking for small graphs
+    - display graph walking for large graphs [only show local context to current step]
+    - rewrite in ES6
+    - history: back, loop, path count, etc
+    - smarter path count (merge gremlins)
+    - orthopto
+
+    */
+
+    xhr = function (url, options, data) {
+      //// very simple promise-based XHR implementation
+    
+      return new Promise(function(resolve, reject) {
+        var req = new XMLHttpRequest();
+        req.open(options.method || 'GET', url);
+        
+        Object.keys(options.headers || {}).forEach(function (key) {
+          req.setRequestHeader(key, options.headers[key]);
+        });
+        
+        var formdata = new FormData()
+        Object.keys(data || {}).forEach(function (key) {
+          var datum = typeof data[key] == 'object' ? JSON.stringify(data[key]) : data[key];
+          formdata.append(key, datum);
+        });
+        
+        if(options && options.type)
+        req.responseType = options.type;
+                
+        req.onload = function() {
+          if (req.status == 200) // silly safari
+          resolve( (req.responseType != options.type) // THINK: JSON.parse throws on invalid JSON
+          && options.type == 'json' ? JSON.parse(req.response) : req.response);
+          else 
+          reject(Error(req.statusText));
+        };
+        
+        req.onerror = function() {
+          reject(Error("Network Error"));
+        };
+        
+        req.send(formdata);
+      });
+    }
+    
+    getJSON = function (url, params) {
+      var options = { headers: { 'Accept': 'application/json' }
+      ,  method: 'GET'
+      ,    type: 'json'
+      }
+      
+      var params = params || {}
+      var enc = function(param) {return !param && param!==0 ? '' : encodeURIComponent(param)}
+      var qstring = Object.keys(params).reduce(function(acc, key) {return acc + enc(key) +'='+ enc(params[key]) +'&'}, '?')
+      
+      return xhr(url + qstring, options) 
+    }
+    
+    prom = getJSON('data/deci.json'); 
+    prom.then(function(data) {
+      if(!data) return false
+      G = Dagoba.graph()
+      
+      data.forEach(function(game) {
+        if(game['bgg-id'])
+          game['_id'] = game['bgg-id']
+        
+        var game_id = G.addVertex(game)
+        
+        props = ['artist', 'category', 'designer', 'publisher', 'subdomain', 'version', 'family', 'mechanic', 'year-published', 'maximum-players', 'minimum-players', 'playing-time']
+        
+        props.forEach(function(prop) {
+          var values = game[prop]
+          if(!values) return false
+          
+          if(!Array.isArray(values))
+            values = [values]
+          
+          values.forEach(function(value) {              
+            // if vertex exists get it
+            var prop_id = prop + '::' + value
+            var vertex = G.findVertexById(prop_id)
+          
+            // otherwise add it
+            if(!vertex)
+              vertex = G.addVertex({_id: prop_id, name: value, type: prop})
+          
+            // add edge
+            G.addEdge({_out: game_id, _in: prop_id, _label: prop})
+          })
+        })
+      })
+
+      // var G = Dagoba.graph();
+      // graph.vertices.forEach(G.addVertex.bind(G))
+      // graph.edges   .forEach(G.addEdge  .bind(G))
+      
+      updateGraph()
+    })
+
+  </script>
+  
+  
+</body>
+</html>
