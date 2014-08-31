@@ -60,6 +60,7 @@ Dagoba.G.addVertex = function(vertex) {
   this.vertices.push(vertex)
   this.vertexIndex[vertex._id] = vertex
   vertex._out = []; vertex._in = []                               // placeholders for edge pointers
+  return vertex._id
 }
 
 Dagoba.G.addEdge = function(edge) {
@@ -412,6 +413,14 @@ Dagoba.onError = function(msg) {
 // THINK: the user may retain a pointer to vertex, which they might mutate later >.<
 // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
 // OPT: we could also/instead take away edge _id setting, and then get rid of Dagoba.find and make findEdgeById like findVertexById (ish)
+
+
+/*
+        ---> no edge _id stuff
+        ---> simplify driver loop helpers
+        ---> refactor outAllN etc (mmm but adverbs?)
+        ---> leo's queries !
+*/
 
 
 // re: Dagoba.Q.addPipeType
