@@ -12,25 +12,50 @@
     There's like a graph database of board games? And you like query it and stuff? The result count show up here; the full results are in the js console. 
   </p>
   
-  <div id="graph">Generating graph...</div>
+  <div id="graph">Generating the graph... this may take a little while.</div>
   
-  <form id="queryform">
-    <label for="query">Query:</label>
-    <input type="text" name="query" id="query" value="G.v(1).out().run()" size="80">
-    <input type="submit" value="go">
-  </form>
+  <div id="showlater" style="display:none">
+    <form id="queryform">
+      <label for="query">Query:</label>
+      <input type="text" name="query" id="query" value="G.v(1).out().run()" size="80">
+      <input type="submit" value="go">
+    </form>
+    
+    <div><pre id="results"></pre></div>
   
-  <p>Find all games that seat 6 and can be played in 20 minutes</p>
-  <p>Find all worker-placement games that are best with 4 players and have a rating better than 7</p>
-  <p>Find all repeat collaborators (artists/designers that share more than one game in common)</p>
-  <p>Plot career ratings for various designers (Matt Leacock, Antoine Bauza, Reiner Knizia if you need some exaples)</p>
-  <p>Find any boardgame Kevin Bacons (if there are lots, lower the degree count to 5/4/3)</p>
-  <p>Find all collaborators that do better apart than together (those whose collaborative games are ranked significantly lower than their solo efforts)</p>
-  <p>Find any superstar artists (artists whose games are rated significantly higher than other games by the same designers)</p>
-  <p>Find any discerning publishers (publishers whose games are rated significantly higher than other games by the same designers/artists)</p>
-  <p>See if a rating is influenced more by publisher, designer or artist  (plot career/publishing-history for each and see which is more consistent over time)</p>
-  
-  <div><pre id="results"></pre></div>
+    <p>
+      Find all games that seat 6 and can be played in 20 minutes
+      G.v('minimum-players::6').in().run()
+      min <= 6 && max >= 6 && playtime = 20
+      --> requires intersection
+    </p>
+    <p>
+      Find all worker-placement games that are best with 4 players and have a rating better than 7
+      --> requires intersection
+    </p>
+    <p>
+      Find all repeat collaborators (artists/designers that share more than one game in common)
+      --> requires intersection
+    </p>
+    <p>
+      Plot career ratings for various designers (Matt Leacock, Antoine Bauza, Reiner Knizia if you need some exaples)
+    </p>
+    <p>
+      Find any boardgame Kevin Bacons (if there are lots, lower the degree count to 5/4/3)
+    </p>
+    <p>
+      Find all collaborators that do better apart than together (those whose collaborative games are ranked significantly lower than their solo efforts)
+    </p>
+    <p>
+      Find any superstar artists (artists whose games are rated significantly higher than other games by the same designers)
+    </p>
+    <p>
+      Find any discerning publishers (publishers whose games are rated significantly higher than other games by the same designers/artists)
+    </p>
+    <p>
+      See if a rating is influenced more by publisher, designer or artist  (plot career/publishing-history for each and see which is more consistent over time)
+    </p>
+  </div>
   
   <script>
 
@@ -55,99 +80,7 @@
       el('results').innerHTML = "There were " + result.length + " results."
     })
 
-    var updateGraph = function() {
-      var str = "<h3>Vertices</h3>\n"
-              + G.vertices.length
-              // + G.vertices.map(function(vertex) {return "<p>"
-              //                                           + JSON.stringify(vertex, Dagoba.cleanvertex)
-              //                                           + "</p>\n"}).join('')
-              + "<h3>Edges</h3>\n"
-              + G.edges.length
-              // + G.edges   .map(function(edge)   {return "<p>"
-              //                                           + JSON.stringify(edge, Dagoba.cleanedge)
-              //                                           + "</p>\n"}).join('')
 
-      el('graph').innerHTML = str
-    }
-    
-    // updateGraph()
-
-
-    /*
-
-      Daggr
-      - add template
-      - set heuristic function for determining template based on data
-      - set layout function
-      - set/add/remove data [immutable always for first pass]
-      - render
-      - add effect functions?
-      - add layout/heuristic so they can be referenced by name
-
-    */
-    
-    /*
-
-    ok. realistically, we can
-    - add edge refs internally and run perf tests [keep old style too]
-    - display graph walking for small graphs
-    - display graph walking for large graphs [only show local context to current step]
-    - rewrite in ES6
-    - history: back, loop, path count, etc
-    - smarter path count (merge gremlins)
-    - orthopto
-
-    */
-
-    xhr = function (url, options, data) {
-      //// very simple promise-based XHR implementation
-    
-      return new Promise(function(resolve, reject) {
-        var req = new XMLHttpRequest();
-        req.open(options.method || 'GET', url);
-        
-        Object.keys(options.headers || {}).forEach(function (key) {
-          req.setRequestHeader(key, options.headers[key]);
-        });
-        
-        var formdata = new FormData()
-        Object.keys(data || {}).forEach(function (key) {
-          var datum = typeof data[key] == 'object' ? JSON.stringify(data[key]) : data[key];
-          formdata.append(key, datum);
-        });
-        
-        if(options && options.type)
-        req.responseType = options.type;
-                
-        req.onload = function() {
-          if (req.status == 200) // silly safari
-          resolve( (req.responseType != options.type) // THINK: JSON.parse throws on invalid JSON
-          && options.type == 'json' ? JSON.parse(req.response) : req.response);
-          else 
-          reject(Error(req.statusText));
-        };
-        
-        req.onerror = function() {
-          reject(Error("Network Error"));
-        };
-        
-        req.send(formdata);
-      });
-    }
-    
-    getJSON = function (url, params) {
-      var options = { headers: { 'Accept': 'application/json' }
-      ,  method: 'GET'
-      ,    type: 'json'
-      }
-      
-      var params = params || {}
-      var enc = function(param) {return !param && param!==0 ? '' : encodeURIComponent(param)}
-      var qstring = Object.keys(params).reduce(function(acc, key) {return acc + enc(key) +'='+ enc(params[key]) +'&'}, '?')
-      
-      return xhr(url + qstring, options) 
-    }
-    
     prom = getJSON('data/deci.json'); 
     prom.then(function(data) {
       if(!data) return false
@@ -183,12 +116,70 @@
         })
       })
 
-      // var G = Dagoba.graph();
-      // graph.vertices.forEach(G.addVertex.bind(G))
-      // graph.edges   .forEach(G.addEdge  .bind(G))
-      
-      updateGraph()
+      displayGraphStats()
+      el('showlater').style.display = ""
     })
+
+    var displayGraphStats = function() {
+      var str = "<h3>Graph generated</h3>\n"
+              + "<p>vertices: "
+              + G.vertices.length
+              + "</p><p>edges:"
+              + G.edges.length
+              + "</p>"
+
+      el('graph').innerHTML = str
+    }
+    
+
+    function xhr (url, options, data) {
+      //// very simple promise-based XHR implementation
+    
+      return new Promise(function(resolve, reject) {
+        var req = new XMLHttpRequest();
+        req.open(options.method || 'GET', url);
+        
+        Object.keys(options.headers || {}).forEach(function (key) {
+          req.setRequestHeader(key, options.headers[key]);
+        });
+        
+        var formdata = new FormData()
+        Object.keys(data || {}).forEach(function (key) {
+          var datum = typeof data[key] == 'object' ? JSON.stringify(data[key]) : data[key];
+          formdata.append(key, datum);
+        });
+        
+        if(options && options.type)
+        req.responseType = options.type;
+                
+        req.onload = function() {
+          if (req.status == 200) // silly safari
+          resolve( (req.responseType != options.type) // THINK: JSON.parse throws on invalid JSON
+          && options.type == 'json' ? JSON.parse(req.response) : req.response);
+          else 
+          reject(Error(req.statusText));
+        };
+        
+        req.onerror = function() {
+          reject(Error("Network Error"));
+        };
+        
+        req.send(formdata);
+      });
+    }
+    
+    function getJSON (url, params) {
+      var options = { headers: { 'Accept': 'application/json' }
+                    ,  method: 'GET'
+                    ,    type: 'json'
+                    }
+      
+      var params = params || {}
+      var enc = function(param) {return !param && param!==0 ? '' : encodeURIComponent(param)}
+      var qstring = Object.keys(params).reduce(function(acc, key) {return acc + enc(key) +'='+ enc(params[key]) +'&'}, '?')
+      
+      return xhr(url + qstring, options) 
+    }
 
   </script>
   
