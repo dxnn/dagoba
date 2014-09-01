@@ -333,10 +333,10 @@ Dagoba.addPipeType('unique', function(graph, args, gremlin, state) {
   
 Dagoba.addPipeType('filter', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'
-  if(typeof args[0] != 'function') return Dagoba.onError('Filter arg is not a function: ' + args[0]) || gremlin
-  if(!args[0](gremlin.vertex)) return 'pull'                      // gremlin fails filter function 
+  if(typeof args[0] != 'function') 
+    return Dagoba.onError('Filter arg is not a function: ' + args[0]) || gremlin
+  if(!args[0](gremlin.vertex, gremlin)) return 'pull'             // gremlin fails filter function 
   return gremlin
-  // THINK: would we ever want to filter by other parts of the gremlin?
 })
   
 Dagoba.addPipeType('take', function(graph, args, gremlin, state) {
