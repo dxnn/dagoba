@@ -51,11 +51,11 @@ Dagoba.graph = function(V, E) {                                   // the factory
 
 Dagoba.G.v = function() {                                         // a query initializer: g.v() -> query
   var query = Dagoba.query(this)
-  query.add(['vertex'].concat( [].slice.call(arguments) ))        // add vertex as first query pipe
+  query.add('vertex', [].slice.call(arguments))                   // add vertex as first query pipe
   return query
 }
 
-Dagoba.G.addVertex = function(vertex) {
+Dagoba.G.addVertex = function(vertex) {                           // accepts a vertex-like object, with properties
   if(!vertex._id)
     vertex._id = this.vertices.length+1                           // NOTE: this assumes no deletions
   else if(this.findVertexById(vertex._id))
@@ -67,7 +67,7 @@ Dagoba.G.addVertex = function(vertex) {
   return vertex._id
 }
 
-Dagoba.G.addEdge = function(edge) {
+Dagoba.G.addEdge = function(edge) {                               // accepts an edge-like object, with properties
   edge._in  = this.findVertexById(edge._in)
   edge._out = this.findVertexById(edge._out)
   if(!(edge._in && edge._out)) 
@@ -138,7 +138,7 @@ Dagoba.Q.run = function() {                                       // our virtual
   var program = this.program
 
   var max = program.length-1                                      // work backwards
-  var pc = max                                                    // program counter
+  var pc = max                                                    // our program counter
   var done = -1                                                   // behindwhich things have finished
   var results = []                                                // results for this run
   var maybe_gremlin = false                                       // a mythical beast
@@ -174,8 +174,6 @@ Dagoba.Q.run = function() {                                       // our virtual
     }
   }
 
-  // TODO: deal with gremlin paths / history and gremlin "collisions"
-  
   results = results.map(function(gremlin) {                       // THINK: make this a pipe type (or posthook)
     return gremlin.result != null ? gremlin.result : gremlin.vertex } )
 
@@ -194,21 +192,23 @@ Dagoba.Q.run = function() {                                       // our virtual
           || maybe_gremlin || 'pull'                              // and a gremlin, if there is one
 
     var pipetype = Dagoba.PipeTypes[step[0]]                      // a pipe type is just a function 
-    return pipetype(graph, step.slice(1) || {}, maybe_gremlin, step_state)
+    return pipetype(graph, step.slice(1) || [], maybe_gremlin, step_state)
   }
 }
 
 
-Dagoba.Q.add = function(list) {                                   // add a new pipe to the query
-  this.program.push(list)
+Dagoba.Q.add = function(pipetype, args) {                         // add a new step to the query
+  var step = [pipetype].concat(args)
+  this.program.push(step)                                         // step is an array: first the pipe type, then its args
   return this
 }
 
 Dagoba.PipeTypes = {}                                             // every pipe has a type
 
-Dagoba.addPipeType = function(name, fun) {
+Dagoba.addPipeType = function(name, fun) {                        // adds a new method to our query object
   Dagoba.PipeTypes[name] = fun
-  Dagoba.Q[name] = function() { return this.add([name].concat([].slice.apply(arguments))) } 
+  Dagoba.Q[name] = function() {
+    return this.add(name, [].slice.apply(arguments)) }            // capture the pipetype and args
 }
 
 
@@ -426,6 +426,7 @@ Dagoba.onError = function(msg) {
 // - intersections
 // - adverbs
 
+// TODO: deal with gremlin paths / history and gremlin "collisions"
 // THINK: the user may retain a pointer to vertex, which they might mutate later >.<
 // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
 
