@@ -231,8 +231,6 @@
 
     GG = [] // global for console testing
     
-    // this is weird but whatever
-    // Dagoba.addHook('postquery', Dagoba.uniqueify)
     Dagoba.addHook('postquery', Dagoba.cleanclone)
     
     var resultlist = triallist.map(function(trial) {
