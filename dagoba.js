@@ -133,10 +133,9 @@ Dagoba.query = function(graph) {                                  // factory (on
 
 Dagoba.Q.run = function() {                                       // our virtual machine for query processing
   
-  var graph = this.graph                                          // these are closed over in the helpers
+  var graph = this.graph                                          // these are closed over in the helper
   var state = this.state                                          // so we give them a spot in the frame
-  var program  = this.program
-  var gremlins = this.gremlins
+  var program = this.program
 
   var max = program.length-1                                      // work backwards
   var pc = max                                                    // program counter
@@ -184,7 +183,7 @@ Dagoba.Q.run = function() {                                       // our virtual
   
   return results
   
-  // NOTE: these helpers are inside our closure, so they have access to closure-level vars like 'gremlins' and 'state'
+  // NOTE: this helper is inside our closure, so it has access to closure-level vars like 'program' and 'state'
   
   function try_step(pc, maybe_gremlin) {
     var step = program[pc]                                        // step is an array: first the pipe type, then its args
@@ -197,23 +196,6 @@ Dagoba.Q.run = function() {                                       // our virtual
     var pipetype = Dagoba.PipeTypes[step[0]]                      // a pipe type is just a function 
     return pipetype(graph, step.slice(1) || {}, maybe_gremlin, step_state)
   }
-    
-  function gremlin_boxer(step_index) { 
-    return function(gremlin) { return [step_index, gremlin] } }
-  
-  function stepper(step_index, gremlin) {
-    var step = program[step_index]
-    if(!Dagoba.PipeTypes[step[0]]) 
-      return Dagoba.onError('Unrecognized pipe type: ' + step[0]) || {}
-    return Dagoba.PipeTypes[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
-  }
-  
-  function eat_gremlins(gremlins, step_index, result) {
-    return gremlins.concat( (result.stay || []).map(gremlin_boxer(step_index))   )
-                   .concat( (result.go   || []).map(gremlin_boxer(step_index+1)) ) }
-  
-  function setbang_gremlins(step_index, result) {
-    gremlins = eat_gremlins(gremlins, step_index, result)}
 }
 
 
