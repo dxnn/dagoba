@@ -44,6 +44,7 @@ Dagoba.graph = function(V, E) {                                   // the factory
   graph.vertices = []                                             // fresh copies so they're not shared
   graph.edges    = []
   graph.vertexIndex = {}
+  graph.autoid = 1                                                // an auto-incrementing id counter
   if(V && Array.isArray(V)) graph.addVertices(V)                  // arrays only, because you wouldn't
   if(E && Array.isArray(E)) graph.addEdges(E)                     // call this with singular V and E
   return graph
@@ -57,7 +58,7 @@ Dagoba.G.v = function() {                                         // a query ini
 
 Dagoba.G.addVertex = function(vertex) {                           // accepts a vertex-like object, with properties
   if(!vertex._id)
-    vertex._id = this.vertices.length+1                           // NOTE: this assumes no deletions
+    vertex._id = this.autoid++
   else if(this.findVertexById(vertex._id))
     return Dagoba.onError('A vertex with that id already exists')
     
