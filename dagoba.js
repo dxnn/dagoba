@@ -176,11 +176,9 @@ Dagoba.Q.run = function() {                                       // our virtual
     }
   }
 
-  results = results.map(function(gremlin) {                       // THINK: make this a pipe type (or posthook)
+  results = results.map(function(gremlin) {                       // return either results (like property('name')) or vertices
     return gremlin.result != null ? gremlin.result : gremlin.vertex } )
 
-  results = Dagoba.fireHooks('postquery', this, results)[0]       // do any requested post-processing
-  
   return results
 }
 
@@ -378,19 +376,6 @@ Dagoba.addPipeType('except', function(graph, args, gremlin, state) {
 
 // HELPER FUNCTIONS
 
-Dagoba.hooks = {}                                                 // callbacks triggered on various occasions
-
-Dagoba.addHook = function(type, callback) {                       // add a new callback
-  if(!Dagoba.hooks[type]) Dagoba.hooks[type] = []
-  Dagoba.hooks[type].push(callback)
-}
-
-Dagoba.fireHooks = function(type, query) {                        // trigger callbacks of type 'type'
-  var args = [].slice.call(arguments, 2)
-  return ((Dagoba.hooks || {})[type] || []).reduce(
-      function(acc, callback) {
-          return callback.apply(query, acc)}, args) }
-
 Dagoba.makeGremlin = function(vertex, state) {                    // gremlins are simple creatures: 
   return {vertex: vertex, state: state || {} } }                  // a current vertex, and some state
 
@@ -412,9 +397,6 @@ Dagoba.objectFilter = function(thing, obj) {
 Dagoba.cleanvertex = function(key, value) {return (key == '_in' || key == '_out') ? undefined : value} // for JSON.stringify
 Dagoba.cleanedge   = function(key, value) {return key == '_in' ? value._id : key == '_out' ? value._id : value}
 
-Dagoba.cleanclone = function (results) {                          // remove all _-prefixed properties
- return [results.map(function(item) {return JSON.parse(JSON.stringify(item, function(key, value) {return key[0]=='_' ? undefined : value}))})]}
-  
 Dagoba.onError = function(msg) {
   console.log(msg)
   return false 
@@ -448,7 +430,3 @@ Dagoba.onError = function(msg) {
 //       Dagoba.addPipeType('children', 'out') <-- if all out edges are kids
 //       Dagoba.addPipeType('nthGGP', 'inN', 'parent')
 // var methods = ['out', 'in', 'take', 'property', 'outAllN', 'inAllN', 'unique', 'filter', 'outV', 'outE', 'inV', 'inE', 'both', 'bothV', 'bothE']
-
-// re: hooks
-// NOTE: add hooks if you need them.
-// Dagoba.addHook('postquery', Dagoba.cleanclone)
