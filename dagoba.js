@@ -133,25 +133,26 @@ Dagoba.query = function(graph) {                                  // factory (on
 }
 
 Dagoba.Q.run = function() {                                       // our virtual machine for query processing
-  
-  var graph = this.graph                                          // these are closed over in the helper
-  var state = this.state                                          // so we give them a spot in the frame
-  var program = this.program
 
-  var max = program.length-1                                      // work backwards
-  var pc = max                                                    // our program counter
+  var max = this.program.length - 1                               // last step in the program
+  var maybe_gremlin = false                                       // a gremlin, a signal string, or false
+  var results = []                                                // results for this particular run
   var done = -1                                                   // behindwhich things have finished
-  var results = []                                                // results for this run
-  var maybe_gremlin = false                                       // a mythical beast
+  var pc = max                                                    // our program counter -- we start from the end
 
-  if(!program.length) return []                                   // don't bother
+  var step, state, pipetype
   
   // driver loop
   while(done < max) {
-    maybe_gremlin = try_step(pc, maybe_gremlin)                   // maybe_gremlin is a gremlin, a signal string, or false
     
-    if(maybe_gremlin == 'pull') {                                 // 'pull' is an out-of-band signal,
-      maybe_gremlin = false                                       // telling us the pipe wants further input
+    step = this.program[pc]                                       // step is an array: first the pipe type, then its args
+    state = (this.state[pc] = this.state[pc] || {})               // the state for this step: ensure it's always an object
+    pipetype = Dagoba.getPipetype(step[0])                        // a pipetype is just a function
+    
+    maybe_gremlin = pipetype(this.graph, step[1], maybe_gremlin, state)
+    
+    if(maybe_gremlin == 'pull') {                                 // 'pull' tells us the pipe wants further input
+      maybe_gremlin = false
       if(pc-1 > done) {
         pc--                                                      // try the previous pipe
         continue
@@ -160,9 +161,9 @@ Dagoba.Q.run = function() {                                       // our virtual
       }
     }
     
-    if(maybe_gremlin == 'done') {                                 // 'done' is on out-of-band signal,
-      done = pc                                                   // telling us the pipe is finished
+    if(maybe_gremlin == 'done') {                                 // 'done' tells us the pipe is finished
       maybe_gremlin = false
+      done = pc
     }
     
     pc++                                                          // move on to the next pipe
@@ -181,25 +182,11 @@ Dagoba.Q.run = function() {                                       // our virtual
   results = Dagoba.fireHooks('postquery', this, results)[0]       // do any requested post-processing
   
   return results
-  
-  // NOTE: this helper is inside our closure, so it has access to closure-level vars like 'program' and 'state'
-  
-  function try_step(pc, maybe_gremlin) {
-    var step = program[pc]                                        // step is an array: first the pipe type, then its args
-    var step_state = (state[pc] = state[pc] || {})                // the state for this step: ensure it's always an object
-
-    if(!Dagoba.PipeTypes[step[0]])                                // most likely this actually results in a TypeError
-      return Dagoba.onError('Unrecognized pipe type: ' + step[0]) // but if you do make it here you get a nice message
-          || maybe_gremlin || 'pull'                              // and a gremlin, if there is one
-
-    var pipetype = Dagoba.PipeTypes[step[0]]                      // a pipe type is just a function 
-    return pipetype(graph, step.slice(1) || [], maybe_gremlin, step_state)
-  }
 }
 
 
 Dagoba.Q.add = function(pipetype, args) {                         // add a new step to the query
-  var step = [pipetype].concat(args)
+  var step = [pipetype, args]
   this.program.push(step)                                         // step is an array: first the pipe type, then its args
   return this
 }
@@ -211,6 +198,18 @@ Dagoba.addPipeType = function(name, fun) {                        // adds a new 
   Dagoba.Q[name] = function() {
     return this.add(name, [].slice.apply(arguments)) }            // capture the pipetype and args
 }
+
+Dagoba.getPipetype = function(name) {
+  var pipetype = Dagoba.PipeTypes[name]                           // a pipe type is just a function 
+
+  if(!pipetype)                                                   // most likely this actually results in a TypeError
+    Dagoba.onError('Unrecognized pipe type: ' + name)             // but if you do make it here you get a nice message
+
+  return pipetype || Dagoba.fauxPipetype
+}
+
+Dagoba.fauxPipetype = function(graph, args, maybe_gremlin) {      // if you can't find a pipe type 
+  return maybe_gremlin || 'pull' }                                // just keep things flowing along
 
 
 // BUILT-IN PIPE TYPES
