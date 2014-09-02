@@ -382,7 +382,7 @@ Dagoba.makeGremlin = function(vertex, state) {                    // gremlins ar
 Dagoba.gotoVertex = function(gremlin, vertex) {                   // clone the gremlin 
   return Dagoba.makeGremlin(vertex, gremlin.state) }              // THINK: add path tracking here?
 
-Dagoba.filterEdges = function(arg) {
+Dagoba.filterEdges = function(arg) {                              // TODO: this is mildly inscrutable, even with labels
   return function(thing) {
     return !arg ? true                                            // nothing is true
          : arg+'' === arg ? thing._label == arg                   // check the label
