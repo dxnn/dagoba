@@ -131,7 +131,7 @@ Dagoba.query = function(graph) {                                  // factory (on
   return query
 }
 
-Dagoba.Q.run = function() {                                       // the magic lives here
+Dagoba.Q.run = function() {                                       // our virtual machine for query processing
   
   var graph = this.graph                                          // these are closed over in the helpers
   var state = this.state                                          // so we give them a spot in the frame
@@ -148,15 +148,15 @@ Dagoba.Q.run = function() {                                       // the magic l
   
   // driver loop
   while(done < max) {
-    maybe_gremlin = try_step(pc, maybe_gremlin)                   // maybe_gremlin is a gremlin, a primitive, or false
+    maybe_gremlin = try_step(pc, maybe_gremlin)                   // maybe_gremlin is a gremlin, a signal string, or false
     
     if(maybe_gremlin == 'pull') {                                 // 'pull' is an out-of-band signal,
       maybe_gremlin = false                                       // telling us the pipe wants further input
       if(pc-1 > done) {
-        pc--
+        pc--                                                      // try the previous pipe
         continue
       } else {
-        done = pc
+        done = pc                                                 // previous pipe is finished, so we are too
       }
     }
     
@@ -165,13 +165,13 @@ Dagoba.Q.run = function() {                                       // the magic l
       maybe_gremlin = false
     }
     
-    pc++
+    pc++                                                          // move on to the next pipe
     
     if(pc > max) {
       if(maybe_gremlin)
         results.push(maybe_gremlin)                               // a gremlin popped out the end of the pipeline
       maybe_gremlin = false
-      pc--
+      pc--                                                        // take a step back
     }
   }
 
@@ -180,26 +180,31 @@ Dagoba.Q.run = function() {                                       // the magic l
   results = results.map(function(gremlin) {                       // THINK: make this a pipe type (or posthook)
     return gremlin.result != null ? gremlin.result : gremlin.vertex } )
 
-  results = Dagoba.fireHooks('postquery', this, results)[0] 
+  results = Dagoba.fireHooks('postquery', this, results)[0]       // do any requested post-processing
   
   return results
   
-  // NOTE: these helpers are inside our closure
+  // NOTE: these helpers are inside our closure, so they have access to closure-level vars like 'gremlins' and 'state'
   
   function try_step(pc, maybe_gremlin) {
-    var step = program[pc]
-    var my_state = (state[pc] = state[pc] || {})
-    if(!Dagoba.PipeTypes[step[0]]) 
-        return Dagoba.onError('Unrecognized pipe type: ' + step[0]) || maybe_gremlin || 'pull'
-    return Dagoba.PipeTypes[step[0]](graph, step.slice(1) || {}, maybe_gremlin, my_state)
+    var step = program[pc]                                        // step is an array: first the pipe type, then its args
+    var step_state = (state[pc] = state[pc] || {})                // the state for this step: ensure it's always an object
+
+    if(!Dagoba.PipeTypes[step[0]])                                // most likely this actually results in a TypeError
+      return Dagoba.onError('Unrecognized pipe type: ' + step[0]) // but if you do make it here you get a nice message
+          || maybe_gremlin || 'pull'                              // and a gremlin, if there is one
+
+    var pipetype = Dagoba.PipeTypes[step[0]]                      // a pipe type is just a function 
+    return pipetype(graph, step.slice(1) || {}, maybe_gremlin, step_state)
   }
     
-  function gremlin_boxer(step_index) { return function(gremlin) { return [step_index, gremlin] } }
+  function gremlin_boxer(step_index) { 
+    return function(gremlin) { return [step_index, gremlin] } }
   
   function stepper(step_index, gremlin) {
     var step = program[step_index]
     if(!Dagoba.PipeTypes[step[0]]) 
-        return Dagoba.onError('Unrecognized pipe type: ' + step[0]) || {}
+      return Dagoba.onError('Unrecognized pipe type: ' + step[0]) || {}
     return Dagoba.PipeTypes[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
   }
   
@@ -207,7 +212,8 @@ Dagoba.Q.run = function() {                                       // the magic l
     return gremlins.concat( (result.stay || []).map(gremlin_boxer(step_index))   )
                    .concat( (result.go   || []).map(gremlin_boxer(step_index+1)) ) }
   
-  function setbang_gremlins(step_index, result) {gremlins = eat_gremlins(gremlins, step_index, result)}
+  function setbang_gremlins(step_index, result) {
+    gremlins = eat_gremlins(gremlins, step_index, result)}
 }
 
 
