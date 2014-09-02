@@ -25,9 +25,11 @@
     q.run()                                                       // returns [delta]    (but don't rely on result order!)
     q.run()                                                       // returns []
 
-    Dagoba consists of two parts: graphs and queries.
+
+    Dagoba consists of two main parts: graphs and queries.
     A graph contains vertices and edges, and provides access to query initializers like g.v()
-    A query contains pipes, which make up a pipeline.
+    A query contains pipes, which make up a pipeline, and a virtual machine for processing pipelines.
+    There are some pipe types defined by default.
     There are also a few helper functions.
     That's all.
 */
@@ -54,9 +56,11 @@ Dagoba.G.v = function() {                                         // a query ini
 }
 
 Dagoba.G.addVertex = function(vertex) {
-  if(!vertex._id)                                                 // TODO: ensure unique _id
-    vertex._id = this.vertices.length+1
-  
+  if(!vertex._id)
+    vertex._id = this.vertices.length+1                           // NOTE: this assumes no deletions
+  else if(this.findVertexById(vertex._id))
+    return Dagoba.onError('A vertex with that id already exists')
+    
   this.vertices.push(vertex)
   this.vertexIndex[vertex._id] = vertex
   vertex._out = []; vertex._in = []                               // placeholders for edge pointers
@@ -64,10 +68,11 @@ Dagoba.G.addVertex = function(vertex) {
 }
 
 Dagoba.G.addEdge = function(edge) {
-  if(!edge._label) return false                                   // all edges must be labeled // THINK: why?
   edge._in  = this.findVertexById(edge._in)
   edge._out = this.findVertexById(edge._out)
-  if(!(edge._in && edge._out)) return false
+  if(!(edge._in && edge._out)) 
+    return Dagoba.onError("That edge's " + (edge._in ? 'out' : 'in') + " vertex wasn't found")
+    
   edge._out._out.push(edge)                                       // add edge to the edge's out vertex's out edges
   edge._in._in.push(edge)                                         // vice versa
   this.edges.push(edge)
@@ -83,11 +88,6 @@ Dagoba.G.findVerticesByIds = function(ids) {
   return ids.length == 1 ? [].concat( this.findVertexById(ids[0]) || [] )
        : ids.map( this.findVertexById.bind(this) ).filter(Boolean) }
 
-Dagoba.G.findVertices = function(ids) {
-  return typeof ids[0] == 'object' ? this.searchVertices(ids[0])
-       : ids.length == 0 ? this.vertices.slice()                  // OPT: do we need the slice?
-       : this.findVerticesByIds(ids) }
-
 Dagoba.G.searchVertices = function(obj) {                         // find vertices that match obj's key-value pairs
   return this.vertices.filter(
     function(vertex) {
@@ -95,9 +95,13 @@ Dagoba.G.searchVertices = function(obj) {                         // find vertic
         function(acc, key) {
           return acc && obj[key] == vertex[key] }, true ) } ) }
 
-Dagoba.G.findEdgeById = function(edge_id) {
-  return Dagoba.find(this.edges, function(edge) {
-      return edge._id == edge_id} ) }
+Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
+  return typeof ids[0] == 'object' ? this.searchVertices(ids[0])
+       : ids.length == 0 ? this.vertices.slice()                  // OPT: slice is costly with lots of vertices
+       : this.findVerticesByIds(ids) }
+
+Dagoba.G.findEdgeById = function(edge_id) {                       // OPT: this doesn't short circuit
+  return this.edges.filter(function(edge) {return edge._id == edge_id})[0]}
 
 Dagoba.G.findOutEdges = function(vertex) { return vertex._out; }
 Dagoba.G.findInEdges  = function(vertex) { return vertex._in;  }
@@ -411,11 +415,6 @@ Dagoba.objectFilter = function(thing, obj) {
     if(thing[key] != obj[key])
       return false; return true }
 
-Dagoba.find = function(arr, fun) {
-  for (var i = 0, len = arr.length; i < len; i++)
-    if(fun(arr[i], i, arr))
-      return arr[i] }
-
 Dagoba.cleanvertex = function(key, value) {return (key == '_in' || key == '_out') ? undefined : value} // for JSON.stringify
 Dagoba.cleanedge   = function(key, value) {return key == '_in' ? value._id : key == '_out' ? value._id : value}
 
@@ -441,7 +440,6 @@ Dagoba.onError = function(msg) {
 
 // THINK: the user may retain a pointer to vertex, which they might mutate later >.<
 // can take away user's ability to set _id and lose the index cache hash, because building it causes big rebalancing slowdowns and runs the GC hard. (or does it?) [this was with a million items, indexed by consecutive ints. generally we need settable _id because we need to grab vertices quickly by external key]
-// OPT: we could also/instead take away edge _id setting, and then get rid of Dagoba.find and make findEdgeById like findVertexById (ish)
 
 
 /*
