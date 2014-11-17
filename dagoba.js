@@ -60,7 +60,7 @@ Dagoba.G.addVertex = function(vertex) {                           // accepts a v
   if(!vertex._id)
     vertex._id = this.autoid++
   else if(this.findVertexById(vertex._id))
-    return Dagoba.onError('A vertex with that id already exists')
+    return Dagoba.error('A vertex with that id already exists')
     
   this.vertices.push(vertex)
   this.vertexIndex[vertex._id] = vertex
@@ -73,7 +73,7 @@ Dagoba.G.addEdge = function(edge) {                               // accepts an 
   edge._out = this.findVertexById(edge._out)
   
   if(!(edge._in && edge._out)) 
-    return Dagoba.onError("That edge's " + (edge._in ? 'out' : 'in') + " vertex wasn't found")
+    return Dagoba.error("That edge's " + (edge._in ? 'out' : 'in') + " vertex wasn't found")
     
   edge._out._out.push(edge)                                       // add edge to the edge's out vertex's out edges
   edge._in._in.push(edge)                                         // vice versa
@@ -236,7 +236,7 @@ Dagoba.getPipetype = function(name) {
   var pipetype = Dagoba.PipeTypes[name]                           // a pipe type is just a function 
 
   if(!pipetype)                                                   // most likely this actually results in a TypeError
-    Dagoba.onError('Unrecognized pipe type: ' + name)             // but if you do make it here you get a nice message
+    Dagoba.error('Unrecognized pipe type: ' + name)               // but if you do make it here you get a nice message
 
   return pipetype || Dagoba.fauxPipetype
 }
@@ -260,8 +260,8 @@ Dagoba.addPipeType('vertex', function(graph, args, gremlin, state) {
 })
 
 Dagoba.simpleTraversal = function(dir) {                          // handles basic in and out pipetypes
-  var findMethod = dir == 'out' ? 'findOutEdges' : 'findInEdges'
-  var edgeList   = dir == 'out' ? '_in' : '_out'
+  var find_method = dir == 'out' ? 'findOutEdges' : 'findInEdges'
+  var edge_list   = dir == 'out' ? '_in' : '_out'
   
   return function(graph, args, gremlin, state) {
     if(!gremlin && (!state.edges || !state.edges.length))         // query initialization
@@ -269,14 +269,14 @@ Dagoba.simpleTraversal = function(dir) {                          // handles bas
   
     if(!state.edges || !state.edges.length) {                     // state initialization
       state.gremlin = gremlin
-      state.edges = graph[findMethod](gremlin.vertex)             // this just gets edges that match our query
+      state.edges = graph[find_method](gremlin.vertex)            // this just gets edges that match our query
                          .filter(Dagoba.filterEdges(args[0]))
     }
 
     if(!state.edges.length)                                       // all done
       return 'pull'
 
-    var vertex = state.edges.pop()[edgeList]                      // use up an edge
+    var vertex = state.edges.pop()[edge_list]                     // use up an edge
     return Dagoba.gotoVertex(state.gremlin, vertex)
   }
 }
@@ -374,7 +374,7 @@ Dagoba.addPipeType('filter', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'                                      // query initialization
 
   if(typeof args[0] != 'function') {
-    Dagoba.onError('Filter arg is not a function: ' + args[0]) 
+    Dagoba.error('Filter arg is not a function: ' + args[0]) 
     return gremlin                                                // keep things moving
   }
 
@@ -453,21 +453,21 @@ Dagoba.objectFilter = function(thing, filter) {                   // thing has t
   return true 
 }
 
-Dagoba.cleanvertex = function(key, value) {                       // for JSON.stringify
+Dagoba.cleanVertex = function(key, value) {                       // for JSON.stringify
   return (key == '_in' || key == '_out') ? undefined : value 
 }
     
-Dagoba.cleanedge = function(key, value) {
+Dagoba.cleanEdge = function(key, value) {
   return (key == '_in' || key == '_out') ? value._id : value 
 }
 
 Dagoba.jsonify = function(graph) {                                // kids, don't hand code JSON
-  return '{"V":' + JSON.stringify(graph.vertices, Dagoba.cleanvertex)
-       + ',"E":' + JSON.stringify(graph.edges,    Dagoba.cleanedge)
+  return '{"V":' + JSON.stringify(graph.vertices, Dagoba.cleanVertex)
+       + ',"E":' + JSON.stringify(graph.edges,    Dagoba.cleanEdge)
        + '}' 
 }
 
-Dagoba.onError = function(msg) {
+Dagoba.error = function(msg) {
   console.log(msg)
   return false 
 }

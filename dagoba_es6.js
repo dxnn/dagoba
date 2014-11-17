@@ -96,7 +96,7 @@ Dagoba.Query.run = function() {
   
   function stepper(step_index, gremlin) {
     let step = queue[step_index]
-    if(!Dagoba.Funs[step[0]]) return Dagoba.onError('Unrecognized function call: ' + step[0]) || {}
+    if(!Dagoba.Funs[step[0]]) return Dagoba.error('Unrecognized function call: ' + step[0]) || {}
     return Dagoba.Funs[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
   }
   
@@ -350,7 +350,7 @@ Array.prototype.first = function(fun) {
     if(fun(this[i]))
       return this[i] }
 
-Dagoba.onError = function(msg) {
+Dagoba.error = function(msg) {
   console.log(msg)
   return false
 }

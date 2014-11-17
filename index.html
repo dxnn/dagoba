@@ -81,7 +81,7 @@
       e.preventDefault()
       var query = elquery.value
       var result = eval(query) // oh dear
-      elresults.innerHTML = JSON.stringify(result, Dagoba.cleanvertex, 2)
+      elresults.innerHTML = JSON.stringify(result, Dagoba.cleanVertex, 2)
     })
 
     eladdedgeform.addEventListener('submit', function(e) {
@@ -109,11 +109,11 @@
     var updateGraph = function() {
       var str = "<h3>Vertices</h3>\n"
               + G.vertices.map(function(vertex) {return "<p>" 
-                                                        + JSON.stringify(vertex, Dagoba.cleanvertex) 
+                                                        + JSON.stringify(vertex, Dagoba.cleanVertex) 
                                                         + "</p>\n"}).join('') 
               + "<h3>Edges</h3>\n"
               + G.edges   .map(function(edge)   {return "<p>" 
-                                                        + JSON.stringify(edge, Dagoba.cleanedge)     
+                                                        + JSON.stringify(edge, Dagoba.cleanEdge)     
                                                         + "</p>\n"}).join('')
 
       elgraph.innerHTML = str

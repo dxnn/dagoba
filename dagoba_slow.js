@@ -57,7 +57,7 @@ DagobaSlow.Query.run = function() {
   
   function stepper(step_index, gremlin) {
     var step = queue[step_index]
-    if(!DagobaSlow.Funs[step[0]]) return DagobaSlow.onError('Unrecognized function call: ' + step[0]) || {}
+    if(!DagobaSlow.Funs[step[0]]) return DagobaSlow.error('Unrecognized function call: ' + step[0]) || {}
     return DagobaSlow.Funs[step[0]](graph, step.slice(1) || {}, gremlin || {}, state[step_index] || {})
   }
   
@@ -301,7 +301,7 @@ Array.prototype.first = function(fun) {
     if(fun(this[i]))
       return this[i] }
 
-DagobaSlow.onError = function(msg) {
+DagobaSlow.error = function(msg) {
   console.log(msg)
   return false
 }

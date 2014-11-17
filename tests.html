@@ -256,9 +256,9 @@
       var header = document.createElement('header')
       testdiv.appendChild(header)
       header.innerHTML = '<p>vertices: <code><pre>' 
-                       + JSON.stringify(trial.vertices, Dagoba.cleanvertex, 2) + '</pre></code></p>'
+                       + JSON.stringify(trial.vertices, Dagoba.cleanVertex, 2) + '</pre></code></p>'
                        + '<p>edges: <code><pre>'    
-                       + JSON.stringify(trial.edges,    Dagoba.cleanedge,   2) + '</pre></code></p>'
+                       + JSON.stringify(trial.edges,    Dagoba.cleanEdge,   2) + '</pre></code></p>'
       
       resultbox[1].forEach(function(list) {
         
