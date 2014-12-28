@@ -45,8 +45,8 @@ Dagoba.graph = function(V, E) {                                   // the factory
   graph.vertices    = []
   graph.vertexIndex = {}
   graph.autoid = 1                                                // an auto-incrementing id counter
-  if(V && Array.isArray(V)) graph.addVertices(V)                  // arrays only, because you wouldn't
-  if(E && Array.isArray(E)) graph.addEdges(E)                     // call this with singular V and E
+  if(Array.isArray(V)) graph.addVertices(V)                       // arrays only, because you wouldn't
+  if(Array.isArray(E)) graph.addEdges(E)                          // call this with singular V and E
   return graph
 }
 
@@ -250,7 +250,7 @@ Dagoba.fauxPipetype = function(graph, args, maybe_gremlin) {      // if you can'
 
 Dagoba.addPipeType('vertex', function(graph, args, gremlin, state) {
   if(!state.vertices) 
-    state.vertices = graph.findVertices(args)                     // our findVertices function is quite general
+    state.vertices = graph.findVertices(args)                     // state initialization
 
   if(!state.vertices.length)                                      // all done
     return 'done'
@@ -269,7 +269,7 @@ Dagoba.simpleTraversal = function(dir) {                          // handles bas
   
     if(!state.edges || !state.edges.length) {                     // state initialization
       state.gremlin = gremlin
-      state.edges = graph[find_method](gremlin.vertex)            // this just gets edges that match our query
+      state.edges = graph[find_method](gremlin.vertex)            // get edges that match our query
                          .filter(Dagoba.filterEdges(args[0]))
     }
 
@@ -429,7 +429,7 @@ Dagoba.filterEdges = function(filter) {
     if(!filter)                                                   // if there's no filter, everything is valid
       return true
 
-    if(filter+'' === filter)                                      // if the filter is a string, the label must match
+    if(typeof filter == 'string')                                 // if the filter is a string, the label must match
       return edge._label == filter
 
     if(Array.isArray(filter))                                     // if the filter is an array, the label must be in it
@@ -465,6 +465,12 @@ Dagoba.jsonify = function(graph) {                                // kids, don't
   return '{"V":' + JSON.stringify(graph.vertices, Dagoba.cleanVertex)
        + ',"E":' + JSON.stringify(graph.edges,    Dagoba.cleanEdge)
        + '}' 
+}
+
+Dagoba.persist = function(graph, name) {
+  name = name || 'graph'
+  var flatgraph = Dagoba.jsonify(graph)
+  localStorage.setItem('DAGOBA::'+name, flatgraph)
 }
 
 Dagoba.error = function(msg) {
@@ -507,3 +513,9 @@ Dagoba.error = function(msg) {
 // q = x.take(1)
 // y = x.take(10)
 // and it will do what you want instead of exploding.
+
+// or....
+// x = g.v(1).out().out()
+// y = D.clone(x).take(1)
+// x.take(1).run()
+// y.run() // same answer
