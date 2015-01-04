@@ -97,8 +97,9 @@ Dagoba.G.findVerticesByIds = function(ids) {
 }
 
 // Dagoba.G.findVerticesByIds = function(ids) {
-//   return ids.length == 1 ? [].concat( this.findVertexById(ids[0]) || [] )
-//        : ids.map( this.findVertexById.bind(this) ).filter(Boolean) }
+//   return ids.length == 1
+//          ? [].concat( this.findVertexById(ids[0]) || [] )
+//          : ids.map( this.findVertexById.bind(this) ).filter(Boolean) }
 
 Dagoba.G.searchVertices = function(obj) {                         // find vertices that match obj's key-value pairs
   return this.vertices.filter( function(vertex) {
@@ -471,6 +472,13 @@ Dagoba.persist = function(graph, name) {
   name = name || 'graph'
   var flatgraph = Dagoba.jsonify(graph)
   localStorage.setItem('DAGOBA::'+name, flatgraph)
+}
+
+Dagoba.depersist = function (name) {
+  name = 'DAGOBA::' + (name || 'graph')
+  var flatgraph = localStorage.getItem(name)
+  var seedgraph = JSON.parse(flatgraph)                           // this can throw
+  return Dagoba.graph(seedgraph.V, seedgraph.E)
 }
 
 Dagoba.error = function(msg) {
