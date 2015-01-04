@@ -115,12 +115,10 @@ Dagoba.G.findVertexById = function(vertex_id) {
   return this.vertexIndex[vertex_id] 
 }
 
-Dagoba.G.searchVertices = function(obj) {                         // find vertices that match obj's key-value pairs
-  return this.vertices.filter( function(vertex) {
-    return Object.keys(obj).reduce( function(acc, key) {
-      return acc && obj[key] == vertex[key] 
-    }, true)
-  }) 
+Dagoba.G.searchVertices = function(filter) {                      // find vertices that match obj's key-value pairs
+  return this.vertices.filter(function(vertex) {
+    return Dagoba.objectFilter(vertex, filter)
+  })
 }
 
 // Dagoba.G.searchVertices = function(obj) {                         // find vertices that match obj's key-value pairs
