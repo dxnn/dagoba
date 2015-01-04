@@ -83,9 +83,19 @@ Dagoba.G.addEdge = function(edge) {                               // accepts an 
 Dagoba.G.addVertices = function(vertices) { vertices.forEach(this.addVertex.bind(this)) }
 Dagoba.G.addEdges    = function(edges)    { edges   .forEach(this.addEdge  .bind(this)) }
 
-Dagoba.G.findVertexById = function(vertex_id) {
-  return this.vertexIndex[vertex_id] 
+Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
+  if(typeof ids[0] == 'object')
+    return this.searchVertices(ids[0])
+  else if(ids.length == 0)
+    return this.vertices.slice()                                  // OPT: slice is costly with lots of vertices
+  else
+    return this.findVerticesByIds(ids)
 }
+
+// Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
+//   return typeof ids[0] == 'object' ? this.searchVertices(ids[0])
+//        : ids.length == 0 ? this.vertices.slice()                  // OPT: slice is costly with lots of vertices
+//        : this.findVerticesByIds(ids) }
 
 Dagoba.G.findVerticesByIds = function(ids) {
   if(ids.length == 1) {
@@ -101,6 +111,10 @@ Dagoba.G.findVerticesByIds = function(ids) {
 //          ? [].concat( this.findVertexById(ids[0]) || [] )
 //          : ids.map( this.findVertexById.bind(this) ).filter(Boolean) }
 
+Dagoba.G.findVertexById = function(vertex_id) {
+  return this.vertexIndex[vertex_id] 
+}
+
 Dagoba.G.searchVertices = function(obj) {                         // find vertices that match obj's key-value pairs
   return this.vertices.filter( function(vertex) {
     return Object.keys(obj).reduce( function(acc, key) {
@@ -115,20 +129,6 @@ Dagoba.G.searchVertices = function(obj) {                         // find vertic
 //       return Object.keys(obj).reduce(
 //         function(acc, key) {
 //           return acc && obj[key] == vertex[key] }, true ) } ) }
-
-Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
-  if(typeof ids[0] == 'object')
-    return this.searchVertices(ids[0])
-  else if(ids.length == 0)
-    return this.vertices.slice()                                  // OPT: slice is costly with lots of vertices
-  else
-    return this.findVerticesByIds(ids)
-}
-
-// Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
-//   return typeof ids[0] == 'object' ? this.searchVertices(ids[0])
-//        : ids.length == 0 ? this.vertices.slice()                  // OPT: slice is costly with lots of vertices
-//        : this.findVerticesByIds(ids) }
 
 Dagoba.G.findEdgeById = function(edge_id) {
   for(var i = this.edges.length - 1; i >= 0; i--) {
@@ -470,15 +470,13 @@ Dagoba.jsonify = function(graph) {                                // kids, don't
 
 Dagoba.persist = function(graph, name) {
   name = name || 'graph'
-  var flatgraph = Dagoba.jsonify(graph)
-  localStorage.setItem('DAGOBA::'+name, flatgraph)
+  localStorage.setItem('DAGOBA::'+name, graph)
 }
 
 Dagoba.depersist = function (name) {
   name = 'DAGOBA::' + (name || 'graph')
   var flatgraph = localStorage.getItem(name)
-  var seedgraph = JSON.parse(flatgraph)                           // this can throw
-  return Dagoba.graph(seedgraph.V, seedgraph.E)
+  return Dagoba.fromString(flatgraph)
 }
 
 Dagoba.error = function(msg) {
