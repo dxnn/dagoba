@@ -60,7 +60,7 @@ Dagoba.G.addVertex = function(vertex) {                           // accepts a v
   if(!vertex._id)
     vertex._id = this.autoid++
   else if(this.findVertexById(vertex._id))
-    return Dagoba.error('A vertex with that id already exists')
+    return Dagoba.error('A vertex with id ' + vertex._id + ' already exists')
     
   this.vertices.push(vertex)
   this.vertexIndex[vertex._id] = vertex
@@ -130,25 +130,13 @@ Dagoba.G.searchVertices = function(obj) {                         // find vertic
 //         function(acc, key) {
 //           return acc && obj[key] == vertex[key] }, true ) } ) }
 
-Dagoba.G.findEdgeById = function(edge_id) {
-  for(var i = this.edges.length - 1; i >= 0; i--) {
-    var edge = this.edges[i]
-    if(edge._id == edge_id)
-      return edge
-  }
-}
-
-// Dagoba.G.findEdgeById = function(edge_id) {                       // OPT: this doesn't short circuit
-//   return this.edges.filter(function(edge) {
-//     return edge._id == edge_id})[0] }
-
 Dagoba.G.findOutEdges = function(vertex) { return vertex._out; }
 Dagoba.G.findInEdges  = function(vertex) { return vertex._in;  }
 
 Dagoba.G.toString = function() { return Dagoba.jsonify(this) }    // serialization
 
 Dagoba.fromString = function(str) {                               // another graph constructor
-  var obj = JSON.parse(str)
+  var obj = JSON.parse(str)                                       // this could throw
   return Dagoba.graph(obj.V, obj.E) 
 }
 
