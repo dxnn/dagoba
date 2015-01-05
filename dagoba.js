@@ -246,7 +246,7 @@ Dagoba.addPipetype('vertex', function(graph, args, gremlin, state) {
   return Dagoba.makeGremlin(vertex, gremlin.state)                // we can have incoming gremlins from as/back queries
 })
 
-Dagoba.simpleTraversal = function(dir) {                          // handles basic in and out pipetypes
+Dagoba.simpleTraversal = function(dir) {                          // handles basic in, out and both pipetypes
   var find_method = dir == 'out' ? 'findOutEdges' : 'findInEdges'
   var edge_list   = dir == 'out' ? '_in' : '_out'
   
@@ -268,8 +268,9 @@ Dagoba.simpleTraversal = function(dir) {                          // handles bas
   }
 }
 
-Dagoba.addPipetype('out', Dagoba.simpleTraversal('out'))
-Dagoba.addPipetype('in',  Dagoba.simpleTraversal('in'))
+Dagoba.addPipetype('in',   Dagoba.simpleTraversal('in'))
+Dagoba.addPipetype('out',  Dagoba.simpleTraversal('out'))
+// Dagoba.addPipetype('both', Dagoba.simpleTraversal('both'))
 
 
 Dagoba.addPipetype('outAllN', function(graph, args, gremlin, state) {
@@ -360,6 +361,10 @@ Dagoba.addPipetype('unique', function(graph, args, gremlin, state) {
 Dagoba.addPipetype('filter', function(graph, args, gremlin, state) {
   if(!gremlin) return 'pull'                                      // query initialization
 
+  if(typeof args[0] == 'object')                                  // filter by object
+    return Dagoba.objectFilter(gremlin.vertex, args[0]) 
+         ? gremlin : 'pull'
+    
   if(typeof args[0] != 'function') {
     Dagoba.error('Filter arg is not a function: ' + args[0]) 
     return gremlin                                                // keep things moving
