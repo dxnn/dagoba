@@ -154,9 +154,7 @@ Dagoba.query = function(graph) {                                  // factory (on
 }
 
 Dagoba.Q.run = function() {                                       // our virtual machine for query processing
-
-  //// TODO: this is new stuff
-  this.program = Dagoba.transform(this.program)
+  this.program = Dagoba.transform(this.program)                   // activate the transformers
 
   var max = this.program.length - 1                               // last step in the program
   var maybe_gremlin = false                                       // a gremlin, a signal string, or false
@@ -497,8 +495,10 @@ Dagoba.error = function(msg) {
 Dagoba.T = []                                                     // transformers (more than meets the eye)
 
 Dagoba.addTransformer = function(fun, priority) {
-  priority = priority|0||0
-  for(var i = 0; i < Dagoba.T.length; i++)                        // TODO: binary search
+  if(typeof fun != 'function')
+    return Dagoba.error('Invalid transformer function') 
+  
+  for(var i = 0; i < Dagoba.T.length; i++)                        // OPT: binary search
     if(priority > Dagoba.T[i].priority) break
   
   Dagoba.T.splice(i, 0, {priority: priority, fun: fun})
