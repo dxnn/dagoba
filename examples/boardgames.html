@@ -2,8 +2,8 @@
 <html>
 <head>
   <title>Dagoba</title>
-  <script type="text/javascript" src="dagoba.js"></script> 
-  <script type="text/javascript" src="promise.min.js"></script> 
+  <script type="text/javascript" src="../build/dagoba.js"></script> 
+  <script type="text/javascript" src="../vendor/promise.min.js"></script> 
   <style type="text/css">
   </style> 
 </head>
@@ -18,7 +18,7 @@
   <div id="showlater" style="display:none">
     <form id="queryform">
       <label for="query">Query:</label>
-      <input type="text" name="query" id="query" value="G.v(1).out().run()" size="80">
+      <input type="text" name="query" id="query" value="G.v(2).out().run()" size="80">
       <input type="submit" value="go">
     </form>
     
@@ -82,7 +82,7 @@
         mapcat = function(acc, arr) {return acc.concat(arr)}
         unique = function(acc, x) {return !~acc.indexOf(x) ? acc.concat(x) : acc}
       
-        G.v(1).out('designer').in().property('designer').run().reduce(mapcat, []).reduce(unique, [])
+        G.v(2).out('designer').in().property('designer').run().reduce(mapcat, []).reduce(unique, [])
       
       Or if you know the designer's name:
       
@@ -173,7 +173,10 @@
     })
 
 
-    prom = getJSON('data/deci.json'); 
+    prom = getJSON('../data/deci.json').catch(function(err) {
+      console.log('Could not find that data file')
+    })
+    
     prom.then(function(data) {
       el('graph').innerHTML = "Generating the graph... this may take a little while." // THINK: why doesn't this work?
     })
@@ -237,36 +240,36 @@
       //// very simple promise-based XHR implementation
     
       return new Promise(function(resolve, reject) {
-        var req = new XMLHttpRequest();
-        req.open(options.method || 'GET', url);
+        var req = new XMLHttpRequest()
+        req.open(options.method || 'GET', url)
         
         Object.keys(options.headers || {}).forEach(function (key) {
-          req.setRequestHeader(key, options.headers[key]);
-        });
+          req.setRequestHeader(key, options.headers[key])
+        })
         
         var formdata = new FormData()
         Object.keys(data || {}).forEach(function (key) {
-          var datum = typeof data[key] == 'object' ? JSON.stringify(data[key]) : data[key];
-          formdata.append(key, datum);
-        });
+          var datum = typeof data[key] == 'object' ? JSON.stringify(data[key]) : data[key]
+          formdata.append(key, datum)
+        })
         
         if(options && options.type)
-        req.responseType = options.type;
+        req.responseType = options.type
                 
         req.onload = function() {
           if (req.status == 200) // silly safari
             resolve( (req.responseType != options.type) // THINK: JSON.parse throws on invalid JSON
-                  && options.type == 'json' ? JSON.parse(req.response) : req.response);
+                  && options.type == 'json' ? JSON.parse(req.response) : req.response)
           else 
-            reject(Error(req.statusText));
-        };
+            reject(Error(req.statusText))
+        }
         
         req.onerror = function() {
-          reject(Error("Network Error"));
-        };
+          reject(Error("Network Error"))
+        }
         
-        req.send(formdata);
-      });
+        req.send(formdata)
+      })
     }
     
     function getJSON (url, params) {

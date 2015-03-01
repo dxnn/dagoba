@@ -32,10 +32,14 @@
     There are some pipe types defined by default.
     There are also a few helper functions.
     That's all.
+
+
+    copyright dann toliver, 2015
+    version 0.3.3
 */
 
 
-Dagoba = {}                                                       // the namespace
+var Dagoba = {}                                                   // the namespace
 
 Dagoba.G = {}                                                     // the prototype
 
@@ -74,7 +78,7 @@ Dagoba.G.addEdge = function(edge) {                               // accepts an 
   
   if(!(edge._in && edge._out)) 
     return Dagoba.error("That edge's " + (edge._in ? 'out' : 'in') + " vertex wasn't found")
-    
+  
   edge._out._out.push(edge)                                       // add edge to the edge's out vertex's out edges
   edge._in._in.push(edge)                                         // vice versa
   this.edges.push(edge)
