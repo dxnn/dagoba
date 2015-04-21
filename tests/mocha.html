@@ -1,0 +1,26 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dagoba Tests</title>
+  <link rel="stylesheet" href="../node_modules/mocha/mocha.css" />
+</head>
+<body>
+  <div id="mocha"></div>
+  <script src="../build/dagoba.js"></script>
+  <script src="../node_modules/chai/chai.js"></script>
+  <script src="../node_modules/chai-as-promised/lib/chai-as-promised.js"></script>
+  <script src="../node_modules/mocha/mocha.js"></script>
+  <script>
+    mocha.setup('bdd')
+    should = chai.should()
+  </script>
+  
+  <script src="test_basic_api.js"></script>  <!-- tests for core functionality -->
+  <script src="test_asgard.js"></script>     <!-- tests for chapter examples -->
+  
+  <script>
+    mocha.checkLeaks()
+    mocha.run()
+  </script>
+</body>
+</html>
