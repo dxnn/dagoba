@@ -617,7 +617,7 @@ Dagoba.addPipetype('merge', function(graph, args, gremlin, state) {
 })
 ```
 
-We map over each argument, looking for it in the gremlin's list of labeled vertices. If we find it, we clone the gremlin to that vertex.  
+We map over each argument, looking for it in the gremlin's list of labeled vertices. If we find it, we clone the gremlin to that vertex. Note that only gremlins that make it to this pipe are included in the merge -- if Thor's mother's parents aren't in the graph, she won't be in the result set.
 
 
 #### Except
@@ -660,7 +660,7 @@ Some of the questions we might ask involve checking further into the graph, only
 ```javascript
 g.v('Fjörgynn').in('daughter').as('me')                 // first gremlin's state.as is Frigg
  .in()                                                  // first gremlin's vertex is now Baldr
- .out().out()                                           // put copy of that gremlin on each grandparent
+ .out().out()                                           // copy that gremlin to each grandparent
  .filter({_id: 'Bestla'})                               // only keep the gremlin on grandparent Bestla
  .back('me').unique().run()                             // jump the gremlin's vertex back to Frigg and exit
 ```

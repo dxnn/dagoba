@@ -1,5 +1,7 @@
 describe('Asgard', function() {
-  // var g
+  var aesir_count = 0
+  var vanir_count = 0
+  var edges_count = 0
 
   describe('Construct a graph', function() {
     
@@ -11,14 +13,14 @@ describe('Asgard', function() {
     })
 
     it('should add the Aesir', function() {
-      var aesir = [ ['Ymir', 'M'], ['Þrúðgelmir', 'M'], ['Bergelmir', 'M'], ['Búri', 'M'], ['Borr', 'M']
-                  , ['Bölþorn', 'M'], ['Bestla', 'F'], ['Odin', 'M'], ['Vili', 'M'], ['Ve', 'M']
-                  , ['Hœnir', 'M'], ['Fjörgynn', 'M'], ['Frigg', 'F']
+      var aesir = [ ['Auðumbla', 'F'], ['Ymir', 'M'], ['Þrúðgelmir', 'M'], ['Bergelmir', 'M'], ['Búri', 'M'], ['Borr', 'M']
+                  , ['Bölþorn', 'M'], ['Bestla', 'F'], ['Odin', 'M'], ['Vili', 'M'], ['Vé', 'M']
+                  , ['Hœnir', 'M'], ['Fjörgynn', 'M'], ['Frigg', 'F'], ['Annar', 'M']
                   , ['Jörð', 'F'], ['Nepr', 'M'], ['Gríðr', 'F'], ['Forseti', 'M']
                   , ['Rindr', 'F'], ['Dellingr', 'M'], ['Nótt', 'F'], ['Nanna', 'F'], ['Baldr', 'M']
                   , ['Höðr', 'M'], ['Hermóðr', 'M'], ['Bragi', 'M'], ['Iðunn', 'F'], ['Víðarr', 'M']
                   , ['Váli', 'M'], ['Gefjon', 'F'], ['Ullr', 'M'], ['Týr', 'M'], ['Dagr', 'M']
-                  , ['Thor', 'M'], ['Sif', 'F'], ['Járnsaxa', 'F']
+                  , ['Thor', 'M'], ['Sif', 'F'], ['Járnsaxa', 'F'], ['Nörfi', 'M']
                   , ['Móði', 'M'], ['Þrúðr', 'F'], ['Magni', 'M']
                   , ['Ægir', 'M'], ['Rán', 'F'], ['Nine sisters', 'F'], ['Heimdallr', 'M']
                   ]
@@ -27,8 +29,9 @@ describe('Asgard', function() {
                                                  , species: 'Aesir'
                                                  , gender: pair[1] == 'M' ? 'male' : 'female' }) })
       
+      aesir_count = aesir.length
       g.edges.should.have.lengthOf(0)
-      g.vertices.should.have.lengthOf(42)
+      g.vertices.should.have.lengthOf(aesir_count)
     })
     
     it('should add the Vanir', function() {
@@ -40,22 +43,26 @@ describe('Asgard', function() {
 
       vanir.forEach(function(name) { g.addVertex({_id: name, species: 'Vanir'}) })
       
+      vanir_count = vanir.length
       g.edges.should.have.lengthOf(0)
-      g.vertices.should.have.lengthOf(74)
+      g.vertices.should.have.lengthOf(aesir_count + vanir_count)
     })
     
     it('should add some edges', function() {
       var relationships =
         [  ['Ymir', 'Þrúðgelmir']
         ,  ['Þrúðgelmir', 'Bergelmir']
-        ,  ['Bergelmir', 'Búri']
         ,  ['Bergelmir', 'Bölþorn']
-        ,  ['Búri', 'Borr']
         ,  ['Bölþorn', 'Bestla']
         ,  ['Bestla', 'Odin']
         ,  ['Bestla', 'Vili']
-        ,  ['Bestla', 'Ve']
-        ,  ['Bestla', 'Hœnir']
+        ,  ['Bestla', 'Vé']
+
+        ,  ['Auðumbla', 'Búri']
+        ,  ['Búri', 'Borr']
+        ,  ['Borr', 'Odin']
+        ,  ['Borr', 'Vili']
+        ,  ['Borr', 'Vé']
 
         ,  ['Ægir', 'Nine sisters']
         ,  ['Rán', 'Nine sisters']
@@ -68,6 +75,11 @@ describe('Asgard', function() {
         ,  ['Nanna', 'Forseti']
         ,  ['Baldr', 'Forseti']
 
+        ,  ['Nörfi', 'Nótt']
+        ,  ['Nótt', 'Dagr']
+        ,  ['Nótt', 'Jörð']
+        ,  ['Annar', 'Jörð']
+      
         ,  ['Jörð', 'Thor']
         ,  ['Odin', 'Thor']
         ,  ['Thor', 'Móði']
@@ -83,18 +95,18 @@ describe('Asgard', function() {
         g.addEdge({_in: pair[0], _out: pair[1], _label: 'parent'})
       })
       
-      g.edges.should.have.lengthOf(27)
-      g.vertices.should.have.lengthOf(74)
+      edges_count = relationships.length
+      g.edges.should.have.lengthOf(edges_count)
+      g.vertices.should.have.lengthOf(aesir_count + vanir_count)
     })
   })
   
   describe('Queries from the chapter', function() {
-    var thor
     var getAesir = function(name) { return g.v(name).run()[0] }
     
     it("g.v('Thor') should be Thor", function() {
       var out = g.v('Thor').run()
-      thor = out[0]
+      var thor = out[0]
       thor._id.should.equal('Thor')
       thor.species.should.equal('Aesir')
     })
@@ -103,18 +115,18 @@ describe('Asgard', function() {
       var out = g.v('Thor', 'Odin').run()
       out.should.have.lengthOf(2)
       out.should.contain(getAesir('Odin'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
     })
     
     it("g.v({species: 'Aesir'}) should be all Aesir", function() {
       var out = g.v({species: 'Aesir'}).run()
-      out.should.have.lengthOf(42)
+      out.should.have.lengthOf(aesir_count)
       out.forEach(function(node) { node.should.have.property('species', 'Aesir') })
     })
     
     it("g.v() should be all Aesir and Vanir", function() {
       var out = g.v().run()
-      out.should.have.lengthOf(74)
+      out.should.have.lengthOf(aesir_count + vanir_count)
     })
     
     
@@ -122,10 +134,10 @@ describe('Asgard', function() {
       var out = g.v('Thor').in().out().run()
       out.should.contain(getAesir('Járnsaxa'))
       out.should.contain(getAesir('Sif'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
       
       var out2 = g.v('Thor').out().in().unique().run()
-      out2.should.contain(thor)
+      out2.should.contain(getAesir('Thor'))
       
       var diff = out.length - out2.length
       diff.should.be.above(0)
@@ -140,22 +152,23 @@ describe('Asgard', function() {
     it("g.v('Thor').out().in() should contain several copies of Thor, and his sibling", function() {
       var out = g.v('Thor').out().in().run()
       out.should.contain(getAesir('Baldr'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
       
       var out2 = g.v('Thor').out().in().unique().run()
-      out2.should.contain(thor)
+      out2.should.contain(getAesir('Thor'))
       
       var diff = out.length - out2.length
       diff.should.be.above(0)
     })
     
-      // g.v('Thor').out().in().unique().filter(function(asgardian) {return asgardian._id != 'Thor'}).run()
-      
-      // g.v('Thor').out().in().unique()
-       // .filter(function(asgardian) { return asgardian.weight > asgardian.height })
-       // .run()
-    
-    
+    it("filter functions should filter", function() {
+      var out = g.v('Thor').out().in().unique()
+                 .filter(function(asgardian) { return asgardian._id != 'Thor' })
+                 .run()
+      out.should.contain(getAesir('Baldr'))
+      out.should.not.contain(getAesir('Thor'))
+      out.should.have.lengthOf(1)
+    })
     
     it("g.v('Thor').out().in().unique().filter({survives: true}) should be the empty array, because we don't label survivors", function() {
       var out = g.v('Thor').out().in().unique().filter({survives: true}).run()
@@ -165,44 +178,67 @@ describe('Asgard', function() {
     it("g.v('Thor').out().in().unique().filter({gender: 'male'}) should contain Thor and his sibling", function() {
       var out = g.v('Thor').out().in().unique().filter({gender: 'male'}).run()
       out.should.contain(getAesir('Baldr'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
     })
         
     it("g.v('Thor').out().out().out().in().in().in() should contain Thor and his sibling", function() {
       var out = g.v('Thor').out().out().out().in().in().in().run()
       out.should.contain(getAesir('Baldr'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
     })
     
     it("g.v('Thor').out().out().out().in().in().in().unique().take(10) should contain Thor and his sibling", function() {
       var out = g.v('Thor').out().out().out().in().in().in().unique().take(10).run()
       out.should.contain(getAesir('Baldr'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
     })
     
     it("g.v('Thor').out().out().out().out().in().in().in().in().unique().take(12) should contain Thor and his sibling", function() {
       var out = g.v('Thor').out().out().out().out().in().in().in().in().unique().take(12).run()
       out.should.contain(getAesir('Baldr'))
-      out.should.contain(thor)
+      out.should.contain(getAesir('Thor'))
     })
     
     
-    
-    
-      /*
-         q = g.v('Auðumbla').in().in().in().property('name').take(1)
+    it("Asynchronous queries should work", function() {
+      var q = g.v('Auðumbla').in().in().in().property('_id').take(1)
 
-         q.run() // ["Odin"]
-         q.run() // ["Vili"]
-         q.run() // ["Vé"]
-         q.run() // []
-      */
+      q.run().should.deep.equal(['Vé'])
+      q.run().should.deep.equal(['Vili'])
+      q.run().should.deep.equal(['Odin'])
+      q.run().should.be.empty
+      q.run().should.be.empty
+    })
     
-      // g.v('Thor').out().as('parent').out().as('grandparent').out().as('great-grandparent')
-           // .merge('parent', 'grandparent', 'great-grandparent').run()
-      // g.v('Thor').as('me').out().in().except('me').unique().run()
-      // g.v('Thor').out().as('parent').out().in().except('parent').unique().run()
+    
+    it("Gathering ancestors up to three generations back", function() {
+      var out = g.v('Thor').out().as('parent').out().as('grandparent').out().as('great-grandparent')
+                 .merge('parent', 'grandparent', 'great-grandparent').run()
 
+      out.should.contain(getAesir('Odin'))
+      out.should.contain(getAesir('Borr'))
+      out.should.contain(getAesir('Búri'))
+      // NOTE: the incompleteness of Thor's ancestor data in this graph prevents e.g. Jörð from appearing
+    })
+    
+    it("Get Thor's sibling Baldr", function() {
+      var out = g.v('Thor').as('me').out().in().except('me').unique().run()
+                g.v('Thor').out().as('parent').out().in().except('parent').unique().run()
+      out.should.deep.equal([getAesir('Baldr')])
+    })
+    
+    it("Get Thor's sibling Baldr", function() {
+      var out = g.v('Thor').as('me').out().in().except('me').unique().run()
+      out.should.deep.equal([getAesir('Baldr')])
+    })
+    
+    it("Get Thor's uncles and aunts", function() {
+      var out = g.v('Thor').out().as('parent').out().in().except('parent').unique().run()
+      out.should.contain(getAesir('Vé'))
+      out.should.contain(getAesir('Vili'))
+      out.should.contain(getAesir('Dagr'))
+    })
+    
     
       /*
          Dagoba.addAlias('parents', 'out', ['parent'])
