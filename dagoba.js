@@ -414,7 +414,7 @@ Dagoba.addPipetype('merge', function(graph, args, gremlin, state) {
   //// THINK: merge and back are very similar...
   if(!state.vertices && !gremlin) return 'pull'                   // query initialization
 
-  if(!state.vertices) {                                           // state initialization
+  if(!state.vertices || !state.vertices.length) {                 // state initialization
     var obj = (gremlin.state||{}).as || {}
     state.vertices = args.map(function(id) {return obj[id]}).filter(Boolean)
   }
