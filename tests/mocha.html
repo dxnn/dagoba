@@ -20,6 +20,7 @@
   
   <script>
     mocha.checkLeaks()
+    mocha.globals(['g']) // so we can use 'g' in the console
     mocha.run()
   </script>
 </body>

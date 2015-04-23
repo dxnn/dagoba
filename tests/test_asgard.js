@@ -6,7 +6,7 @@ describe('Asgard', function() {
   describe('Construct a graph', function() {
     
     it('should build an empty graph', function() {
-      g = Dagoba.graph()
+      g = Dagoba.graph()  // NOTE: deliberately leaking 'g' for console operations
       g.should.be.an('object')
       g.edges.should.have.lengthOf(0)
       g.vertices.should.have.lengthOf(0)
@@ -170,6 +170,12 @@ describe('Asgard', function() {
       out.should.have.lengthOf(1)
     })
     
+    it('property works like a map', function() {
+      var out1 = g.v('Thor').out('parent').out('parent').run().map(function(vertex) {return vertex._id})
+      var out2 = g.v('Thor').out('parent').out('parent').property('_id').run()
+      out1.should.deep.equal(out2)
+    })
+    
     it("g.v('Thor').out().in().unique().filter({survives: true}) should be the empty array, because we don't label survivors", function() {
       var out = g.v('Thor').out().in().unique().filter({survives: true}).run()
       out.should.deep.equal([])
@@ -218,13 +224,12 @@ describe('Asgard', function() {
       out.should.contain(getAesir('Odin'))
       out.should.contain(getAesir('Borr'))
       out.should.contain(getAesir('Búri'))
-      // NOTE: the incompleteness of Thor's ancestor data in this graph prevents e.g. Jörð from appearing
-    })
-    
-    it("Get Thor's sibling Baldr", function() {
-      var out = g.v('Thor').as('me').out().in().except('me').unique().run()
-                g.v('Thor').out().as('parent').out().in().except('parent').unique().run()
-      out.should.deep.equal([getAesir('Baldr')])
+      out.should.contain(getAesir('Jörð'))
+      out.should.contain(getAesir('Nótt'))
+      out.should.contain(getAesir('Nörfi'))
+      out.should.contain(getAesir('Bestla'))
+      out.should.contain(getAesir('Bölþorn'))
+      // NOTE: the incompleteness of Thor's ancestor data in this graph prevents e.g. Annar from appearing
     })
     
     it("Get Thor's sibling Baldr", function() {
@@ -234,52 +239,146 @@ describe('Asgard', function() {
     
     it("Get Thor's uncles and aunts", function() {
       var out = g.v('Thor').out().as('parent').out().in().except('parent').unique().run()
-      out.should.contain(getAesir('Vé'))
-      out.should.contain(getAesir('Vili'))
-      out.should.contain(getAesir('Dagr'))
+      out.should.deep.equal([getAesir('Vé'), getAesir('Vili'), getAesir('Dagr')])
     })
     
     
-      /*
-         Dagoba.addAlias('parents', 'out', ['parent'])
-         Dagoba.addAlias('children', 'in', ['parent'])
-         Dagoba.addAlias('siblings', [['out', 'parent'], ['in', 'parent']])
-         Dagoba.addAlias('grandparents', [['out', 'parent'], ['out', 'parent']])
-         Dagoba.addAlias('cousins', [['out', 'parent'], ['as', 'folks'], ['out', 'parent'], ['in', 'parent'], ['except', 'folks'], ['in', 'parents'], ['unique']])        
-      */
+    ////// ALIASES ///////
     
-      // g.v('Thor').parents().children()
-      // g.v('Thor').children().parents()
-    
-      // g.v('Forseti').parents().as('parents').parents().children().except('parents').children().unique()
-      // g.v('Forseti').cousins()
-      
-      // var q = g.v('Thor').children().children().take(2)
-      // q.run()
-    
-      // g.v('Odin').in().run()
-      // g.v('Odin').in('son').run()
-      // g.v('Odin').in(['daughter', 'son']).run()
-      // g.v('Odin').in({position: 2, _label: daughter}).run()
-          
-      /*
-         g.v('Fjörgynn').in('daughter').as('me')                 // first gremlin's state.as is Frigg
-          .in()                                                  // first gremlin's vertex is now Baldr
-          .out().out()                                           // put copy of that gremlin on each grandparent
-          .filter({_id: 'Bestla'})                               // only keep the gremlin on grandparent Bestla
-          .back('me').unique().run()                             // jump the gremlin's vertex back to Frigg and exit
-      */
-    
-    
-    it('should ...', function() {
-      // same:
-      // g.v('Thor').out('father').out('father').run().map(function(vertex) {return vertex.name})
-      // g.v('Thor').out('father').out('father').property('name').run()
-
-      // g.v('Thor').out('father').in('father')
-      // g.v('Thor').out('father').out('father').run()
-      
+    it("parents alias", function() {
+      Dagoba.addAlias('parents', [['out', 'parent']])
+      var out1 = g.v('Thor').parents().property('_id').run()
+      var out2 = g.v('Thor').out('parent').property('_id').run()
+      out1.should.deep.equal(out2)
     })
+    
+    it("children alias", function() {
+      Dagoba.addAlias('children', [['in', 'parent']])
+      var out1 = g.v('Thor').children().run()
+      out1.should.deep.equal([getAesir('Magni'), getAesir('Þrúðr'), getAesir('Móði')])
+    })
+    
+    it("parents then children", function() {
+      var out1 = g.v('Thor').parents().children().run()
+      out1.should.deep.equal([getAesir('Thor'), getAesir('Baldr'), getAesir('Thor')])
+    })
+    
+    it("children then parents", function() {
+      var out1 = g.v('Thor').children().parents().run()
+      out1.should.deep.equal([getAesir('Járnsaxa'), getAesir('Thor'), getAesir('Sif'), getAesir('Thor'), getAesir('Sif'), getAesir('Thor')])
+    })
+    
+    it("siblings alias", function() {
+      Dagoba.addAlias('siblings', [['as', 'me'], ['out', 'parent'], ['in', 'parent'], ['except', 'me']])
+      var out1 = g.v('Magni').siblings().run()
+      out1.should.deep.equal([getAesir('Þrúðr'), getAesir('Móði')])
+    })
+    
+    it("grandparents alias", function() {
+      Dagoba.addAlias('grandparents', [['out', 'parent'], ['out', 'parent']])
+      var out1 = g.v('Magni').grandparents().run()
+      out1.should.deep.equal([getAesir('Odin'), getAesir('Jörð')])
+    })
+    
+    it("cousins alias", function() {
+      Dagoba.addAlias('cousins', [ ['out', 'parent'], ['as', 'folks']
+                                 , ['out', 'parent'], ['in', 'parent'], ['except', 'folks']
+                                 , ['in',  'parent'], ['unique']])
+      var out1 = g.v('Magni').cousins().run()
+      out1.should.deep.equal([getAesir('Forseti')])
+    })
+    
+    it("manual cousins", function() {
+      var out1 = g.v('Magni').parents().as('parents').parents().children().except('parents').children().unique().run()
+      out1.should.deep.equal([getAesir('Forseti')])
+    })
+    
+    it("more cousins", function() {
+      var out1 = g.v('Forseti').cousins().run()
+      out1.should.deep.equal([getAesir('Magni'), getAesir('Þrúðr'), getAesir('Móði')])
+    })
+    
+    
+    it("Odin's grandkids", function() {
+      var q = g.v('Odin').children().children().take(2)
+      q.run().should.deep.equal([getAesir('Magni'), getAesir('Þrúðr')])
+    })
+    
+    it("sons alias", function() {
+      Dagoba.addAlias('sons', [['in', 'parent'], ['filter', {gender: 'male'}]])
+      var out = g.v('Thor').sons().run()
+      out.should.deep.equal([getAesir('Magni'), getAesir('Móði')])
+    })
+    
+    it("daughters alias", function() {
+      Dagoba.addAlias('daughters', [['in', 'parent'], ['filter', {gender: 'female'}]])
+      var out = g.v('Thor').daughters().run()
+      out.should.deep.equal([getAesir('Þrúðr')])
+    })
+    
+    it("Fjörgynn's daughters who have children with Bestla's sons", function() {
+      // as it originally appeared, modified to work with our data model
+      var out = g.v('Fjörgynn').daughters().as('me')
+                 .in()
+                 .out().out()
+                 .filter({_id: 'Bestla'})
+                 .back('me').unique().run()
+      
+      out.should.deep.equal([getAesir('Frigg')])
+    })
+    
+    it("Fjörgynn's daughters who have children with Bestla's sons", function() {
+      // final book version
+      var out = g.v('Fjörgynn').in().as('me')                   // first gremlin's state.as is Frigg
+                 .in()                                          // first gremlin's vertex is now Baldr
+                 .out().out()                                   // make a clone of that gremlin for each grandparent
+                 .filter({_id: 'Bestla'})                       // keep only the gremlin on grandparent Bestla
+                 .back('me').unique().run()                     // jump the gremlin's vertex back to Frigg and exit
+      
+      out.should.deep.equal([getAesir('Frigg')])
+    })
+    
+    
+    it("no edge filter", function() {
+      g.addEdge({'_label': 'spouse', _out: 'Frigg',   _in: 'Odin', order: 1})
+      g.addEdge({'_label': 'spouse', _out: 'Jörð',    _in: 'Odin', order: 2})
+      g.addEdge({'_label': 'owner',  _out: 'Fenrir',  _in: 'Odin', order: 2})
+      var out = g.v('Odin').in().run()
+      out.should.deep.equal([getAesir('Fenrir'), getAesir('Jörð'), getAesir('Frigg'), getAesir('Thor'), getAesir('Baldr')])
+    })
+    
+    it("string edge filter", function() {
+      var out = g.v('Odin').in('parent').run()
+      out.should.deep.equal([getAesir('Thor'), getAesir('Baldr')])
+    })
+    
+    it("array edge filter", function() {
+      var out = g.v('Odin').in(['parent', 'spouse']).run()
+      out.should.deep.equal([getAesir('Jörð'), getAesir('Frigg'), getAesir('Thor'), getAesir('Baldr')])
+    })
+    
+    it("object edge filter", function() {
+      var out = g.v('Odin').in({_label: 'spouse', order: 2}).run()
+      out.should.deep.equal([getAesir('Jörð')])
+    })
+    
+    
+    it.skip('should do wonderous things', function() {
+      console.log(
+        // from old asgard example...
+        g.addEdge({'_label': 'spouse', _in: 'Freyr', _out: 'Thor'})
+    
+      , g.v('Thor').out().in().run()
+      , g.v('Thor').out('parent').in().run()
+    
+      , Dagoba.addAlias('parents', [['out', 'parent']])
+      , Dagoba.addAlias('children', [['in', 'parent']])
+    
+      , g.v('Thor').parents().children().run()
+      , g.v('Thor').parents('spouse').in().run()
+      )
+    })
+    
     
       
       
@@ -294,20 +393,5 @@ describe('Asgard', function() {
       // g.v('Ymir').in().filter({survives: true}).bfs()
       // g.v('Ymir').in().filter({survives: true}).in().bfs()
     
-    it('should do wonderous things', function() {
-      console.log(
-        // from old asgard example...
-        g.addEdge({'_label': 'spouse', _in: 'Freyr', _out: 'Thor'})
-    
-      , g.v('Thor').out().in().run()
-      , g.v('Thor').out('parent').in().run()
-    
-      , Dagoba.addAlias('parents', 'out', ['parent'])
-      , Dagoba.addAlias('children', 'in', ['parent'])
-    
-      , g.v('Thor').parents().children().run()
-      , g.v('Thor').parents('spouse').in().run()
-      )
-    })
   })
 })
