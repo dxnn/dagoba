@@ -87,13 +87,13 @@ Dagoba.G.addEdge = function(edge) {                               // accepts an 
 Dagoba.G.addVertices = function(vertices) { vertices.forEach(this.addVertex.bind(this)) }
 Dagoba.G.addEdges    = function(edges)    { edges   .forEach(this.addEdge  .bind(this)) }
 
-Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
-  if(typeof ids[0] == 'object')
-    return this.searchVertices(ids[0])
-  else if(ids.length == 0)
+Dagoba.G.findVertices = function(args) {                          // our general vertex finding function
+  if(typeof args[0] == 'object')
+    return this.searchVertices(args[0])
+  else if(args.length == 0)
     return this.vertices.slice()                                  // OPT: slice is costly with lots of vertices
   else
-    return this.findVerticesByIds(ids)
+    return this.findVerticesByIds(args)
 }
 
 // Dagoba.G.findVertices = function(ids) {                           // our general vertex finding function
