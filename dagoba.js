@@ -138,7 +138,7 @@ Dagoba.G.findInEdges  = function(vertex) { return vertex._in;  }
 Dagoba.G.toString = function() { return Dagoba.jsonify(this) }    // serialization
 
 Dagoba.fromString = function(str) {                               // another graph constructor
-  var obj = JSON.parse(str)                                       // this could throw
+  var obj = Dagoba.parseJSON(str)                                 // this could throw
   return Dagoba.graph(obj.V, obj.E)
 }
 
@@ -477,6 +477,15 @@ Dagoba.jsonify = function(graph) {                                // kids, don't
   return '{"V":' + JSON.stringify(graph.vertices, Dagoba.cleanVertex)
        + ',"E":' + JSON.stringify(graph.edges,    Dagoba.cleanEdge)
        + '}'
+}
+
+Dagoba.parseJSON = function(str) {
+  try {
+    return JSON.parse(str)
+  } catch(err) {
+    Dagoba.error('Invalid JSON', err)
+    return null
+  }
 }
 
 Dagoba.persist = function(graph, name) {
