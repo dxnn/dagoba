@@ -87,6 +87,19 @@ Dagoba.G.addEdge = function(edge) {                               // accepts an 
 Dagoba.G.addVertices = function(vertices) { vertices.forEach(this.addVertex.bind(this)) }
 Dagoba.G.addEdges    = function(edges)    { edges   .forEach(this.addEdge  .bind(this)) }
 
+Dagoba.G.removeVertex = function(vertex) {
+  vertex._in .slice().forEach(Dagoba.G.removeEdge.bind(this))
+  vertex._out.slice().forEach(Dagoba.G.removeEdge.bind(this))
+  Dagoba.remove(this.vertices, vertex)
+  delete this.vertexIndex[vertex._id]
+}
+
+Dagoba.G.removeEdge = function(edge) {
+  Dagoba.remove(edge._in._in, edge)
+  Dagoba.remove(edge._out._out, edge)
+  Dagoba.remove(this.edges, edge)
+}
+
 Dagoba.G.findVertices = function(args) {                          // our general vertex finding function
   if(typeof args[0] == 'object')
     return this.searchVertices(args[0])
@@ -549,6 +562,10 @@ Dagoba.extend = function(list, defaults) {
     acc[key] = defaults[key]
     return acc
   }, list)
+}
+
+Dagoba.remove = function(list, item) {
+  return list.splice(list.indexOf(item), 1)
 }
 
 // more todos
