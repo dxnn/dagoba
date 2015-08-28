@@ -139,6 +139,7 @@ Dagoba.G.toString = function() { return Dagoba.jsonify(this) }    // serializati
 
 Dagoba.fromString = function(str) {                               // another graph constructor
   var obj = Dagoba.parseJSON(str)                                 // this could throw
+  if(!obj) return null
   return Dagoba.graph(obj.V, obj.E)
 }
 
