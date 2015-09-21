@@ -268,8 +268,15 @@ Dagoba.addPipetype('vertex', function(graph, args, gremlin, state) {
 })
 
 Dagoba.simpleTraversal = function(dir) {                          // handles basic in, out and both pipetypes
-  var find_method = dir == 'out' ? 'findOutEdges' : 'findInEdges'
-  var edge_list   = dir == 'out' ? '_in' : '_out'
+
+  function get_edges(graph, dir, vertex, filter) {                // get edges that match our query
+    var find_method = dir === 'out' ? 'findOutEdges' : 'findInEdges'
+    var other_side  = dir === 'out' ? '_in' : '_out'
+
+    return graph[find_method](vertex)
+      .filter(Dagoba.filterEdges(filter))
+      .map(function(edge) { return edge[other_side] })
+  }
 
   return function(graph, args, gremlin, state) {
     if(!gremlin && (!state.edges || !state.edges.length))         // query initialization
@@ -277,21 +284,24 @@ Dagoba.simpleTraversal = function(dir) {                          // handles bas
 
     if(!state.edges || !state.edges.length) {                     // state initialization
       state.gremlin = gremlin
-      state.edges = graph[find_method](gremlin.vertex)            // get edges that match our query
-                         .filter(Dagoba.filterEdges(args[0]))
+      state.edges = get_edges(graph, dir, gremlin.vertex, args[0])
+
+      if(dir === 'both')
+        state.edges = state.edges.concat(
+          get_edges(graph, 'out', gremlin.vertex, args[0]))
     }
 
     if(!state.edges.length)                                       // all done
       return 'pull'
 
-    var vertex = state.edges.pop()[edge_list]                     // use up an edge
+    var vertex = state.edges.pop()                                // use up an edge
     return Dagoba.gotoVertex(state.gremlin, vertex)
   }
 }
 
 Dagoba.addPipetype('in',   Dagoba.simpleTraversal('in'))
 Dagoba.addPipetype('out',  Dagoba.simpleTraversal('out'))
-// Dagoba.addPipetype('both', Dagoba.simpleTraversal('both'))
+Dagoba.addPipetype('both', Dagoba.simpleTraversal('both'))
 
 
 Dagoba.addPipetype('outAllN', function(graph, args, gremlin, state) {
