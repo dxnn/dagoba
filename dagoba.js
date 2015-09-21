@@ -504,6 +504,15 @@ Dagoba.parseJSON = function(str) {
   }
 }
 
+Dagoba.cloneflat = function(graph) {
+  return Dagoba.parseJSON(Dagoba.jsonify(graph))
+}
+
+Dagoba.clone = function(graph) {
+  var G = Dagoba.cloneflat(graph)
+  return Dagoba.graph(G.V, G.E)
+}
+
 Dagoba.persist = function(graph, name) {
   name = name || 'graph'
   localStorage.setItem('DAGOBA::'+name, graph)
