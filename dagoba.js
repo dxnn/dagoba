@@ -61,7 +61,7 @@ Dagoba.G.v = function() {                                         // a query ini
 }
 
 Dagoba.G.addVertex = function(vertex) {                           // accepts a vertex-like object, with properties
-  if(vertex._id > this.autoid)
+  if(vertex._id >= this.autoid)
     this.autoid = vertex._id + 1                                  // ensure autoid doesn't overwrite
   if(!vertex._id)
     vertex._id = this.autoid++
