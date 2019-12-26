@@ -136,7 +136,7 @@ describe('Asgard', function() {
       out.should.contain(getAesir('Sif'))
       out.should.contain(getAesir('Thor'))
       
-      var out2 = g.v('Thor').out().in().unique().run()
+      var out2 = g.v('Thor').in().out().unique().run()
       out2.should.contain(getAesir('Thor'))
       
       var diff = out.length - out2.length
